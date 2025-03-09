@@ -13,7 +13,7 @@ export type Talent = {
     description?: string,
     level?: number, 
     values?: Record<string, (c: CombatEntity) => any>;
-    constants?: Record<string, any>;
+    //constants?: Record<string, any>;
     children: string[]
 }
 
@@ -28,9 +28,6 @@ export const TALENT_TREE: TalentTree = {
         {
             id: "heavy_attack",
             type: TalentType.Ability,
-            constants: {
-                ability: "heavy_attack"
-            },
             children: ["str-2", "str-3"]
         },
         {
@@ -62,9 +59,6 @@ export const TALENT_TREE: TalentTree = {
         {
             id: "stun",
             type: TalentType.Ability,
-            constants: {
-                ability: "stun"
-            },
             children: ["agi-2", "agi-3"]
         },
         {
@@ -97,9 +91,6 @@ export const TALENT_TREE: TalentTree = {
         {
             id: "heal",
             type: TalentType.Ability,
-            constants: {
-                ability: "heal"
-            },
             children: ["int-2", "healing_touch"]
         },
         {
@@ -113,9 +104,6 @@ export const TALENT_TREE: TalentTree = {
         {
             id: "healing_touch",
             type: TalentType.Ability,
-            constants: {
-                ability: "healing_touch"
-            },
             children: ["int-4"]
         },
         {

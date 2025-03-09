@@ -56,6 +56,7 @@ Each entity during combat has the following:
     * Intelligence
 * List of applied effects
 * List of abilities on cooldown
+* Equipment that provides stats
 * Crit chance = 5% + 0.5% * Agility
 * Crit multiplier = 200% + 1% * Agility
 * Atttack damage = 2 * Strength 
@@ -75,8 +76,7 @@ The player has the following equipment slots:
 * Set of armor
 * Amulet/Necklace
 * Ring
-* Main Weapon
-* Second Weapon
+* Weapon
 
 The item can be one of the following category:
 * Armor
@@ -86,6 +86,7 @@ The item can be one of the following category:
 * Two-handed Weapon (occupies both Main and Second weapon slots)
 * Quest
 * Junk
+* Consumable
 
 The item can one of the following rarity type:
 * Gray (junk)

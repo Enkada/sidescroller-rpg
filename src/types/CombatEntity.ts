@@ -1,5 +1,6 @@
 import { hasFlag } from "../utils";
 import { EffectFlag, type Effect } from "./Effect";
+import { Container, type Equipment } from "./Item";
 import { SPRITES, type Sprite, type SpriteSet } from "./Sprite";
 
 export type Attributes = {
@@ -12,6 +13,7 @@ export type Player = {
 	x: number
 	xp: number
 	gold: number
+	inventory: Container
 	points: {
 		attributesAvailable: number
 		attributesAllocated: Attributes
@@ -30,6 +32,7 @@ export class CombatEntity {
 	public cooldowns: Record<string, number>; // Ability ID -> Cooldown
 	public talents: Record<string, number>; // Talent ID -> Level
 	public usedAbilities: string[];
+	public equipment: Equipment;
 	public effects: { 
 		id: string,
 		duration: number
@@ -48,6 +51,12 @@ export class CombatEntity {
 		this.cooldowns = {};
 		this.talents = {};
 		this.usedAbilities = [];
+		this.equipment = { 
+			weapon: Container.create(1), 
+			armor: Container.create(1), 
+			ring: Container.create(1), 
+			amulet: Container.create(1) 
+		};
 		this.effects = [];
 	}
 

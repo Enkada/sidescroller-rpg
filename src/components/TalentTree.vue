@@ -168,7 +168,7 @@ function updateConnections() {
 
 const getTalentData = (talent: Talent) => {
     if (talent.type === TalentType.Ability) {
-        const ability = getById(ABILITIES, talent.constants?.ability) as Ability;
+        const ability = getById(ABILITIES, talent.id) as Ability;
 
         const description = ability.description.replace(/%(.+?)%/g, (match, key) => `<span class='value'>
                 ${ability.values && ability.values[key] && ability.values[key](props.player.combat) ||
@@ -317,7 +317,7 @@ const resetTalentPoints = () => {
         padding: 0;
         position: relative;
         overflow: hidden;
-        height: 621px; // Magic number
+        height: calc(100% - 2em - 1px);
     }
 
     &__wrapper {

@@ -6,6 +6,13 @@
   --clr-mana-bg: hsl(200, 100%, 32%);
   --clr-xp: hsl(300, 100%, 28%);
   --clr-xp-bg: hsl(300, 100%, 14%);
+  --clr-value: lime;
+  --clr-item-junk: hsl(0, 0%, 50%);
+  --clr-item-common: hsl(0, 0%, 90%);
+  --clr-item-uncommon: hsl(120, 100%, 50%);
+  --clr-item-rare: hsl(200, 100%, 50%);
+  --clr-item-epic: hsl(300, 100%, 50%);
+  --clr-item-legendary: hsl(40, 100%, 50%);
 }
 
 * {
@@ -23,8 +30,32 @@ body {
   overflow: hidden;
 }
 
+.junk {
+  --clr: var(--clr-item-junk);
+}
+
+.common {
+  --clr: var(--clr-item-common);
+}
+
+.uncommon {
+  --clr: var(--clr-item-uncommon);
+}
+
+.rare {
+  --clr: var(--clr-item-rare);
+}
+
+.epic {
+  --clr: var(--clr-item-epic);
+}
+
+.legendary {
+  --clr: var(--clr-item-legendary);
+}
+
 .value {
-  color: lime;
+  color: var(--clr-value);
 }
 
 button {

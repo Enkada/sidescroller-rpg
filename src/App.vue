@@ -10,6 +10,9 @@ import { getById, getXP, hasFlag, Window } from './utils';
 import { EffectFlag, EFFECTS } from './types/Effect';
 import { getTalentById, TALENT_TREE, TalentType, type Talent } from './types/Talent';
 import TalentTree from './components/TalentTree.vue';
+import PlayerInfo from './components/PlayerInfo.vue';
+import { Container, createItem, ITEMS } from './types/Item';
+import Inventory from './components/Inventory.vue';
 
 const windows = ref<Window[]>([]);
 
@@ -146,6 +149,7 @@ const player = ref<Player>({
 	x: 200,
 	xp: 0,
 	gold: 0,
+	inventory: Container.create(16),
 	points: {
 		attributesAvailable: 3,
 		attributesAllocated: {
@@ -402,15 +406,25 @@ const onKeyDown = (e: KeyboardEvent) => {
 };
 
 const onKeyUp = (e: KeyboardEvent) => {
-	if (e.key === 'a' || e.key === 'A') {
-		keys.a = false;
-	} else if (e.key === 'd' || e.key === 'D') {
-		keys.d = false;
-	} else if (e.key === 'c' || e.key === 'C') {
-		toggleWindow(Window.Character);
-	} else if (e.key === 'n' || e.key === 'N') {
-		toggleWindow(Window.TalentTree);
-	}
+    const key = e.key.toLowerCase();
+    switch (key) {
+        case 'a':
+        case 'd':
+            keys[key] = false;
+            break;
+        case 'c':
+            toggleWindow(Window.Character);
+            break;
+        case 'n':
+            toggleWindow(Window.TalentTree);
+            break;
+        case 'b':
+            toggleWindow(Window.Inventory);
+            break;
+        case 'g':
+            player.value.inventory.add(createItem(ITEMS.map(x => x.id)[Math.floor(Math.random() * ITEMS.map(x => x.id).length)]));
+            break;
+    }
 };
 
 // --- Drawing function ---
@@ -657,28 +671,6 @@ watch(() => combat.isInProgress, (isInProgress) => {
 	}
 });
 
-const allocateAttributePoint = (attribute: keyof Attributes, points: number) => {
-	player.value.points.attributesAvailable -= points;
-	player.value.points.attributesAllocated[attribute] += points;
-	player.value.combat.attributes[attribute] += points;
-
-	player.value.combat.resourcesFix();
-}
-
-const cancelAttributeAllocation = () => {
-	player.value.points.attributesAvailable += player.value.points.attributesAllocated.agility + player.value.points.attributesAllocated.intelligence + player.value.points.attributesAllocated.strength;
-
-	player.value.combat.attributes.strength -= player.value.points.attributesAllocated.strength;
-	player.value.combat.attributes.agility -= player.value.points.attributesAllocated.agility;
-	player.value.combat.attributes.intelligence -= player.value.points.attributesAllocated.intelligence;
-
-	player.value.points.attributesAllocated.strength = 0;
-	player.value.points.attributesAllocated.agility = 0;
-	player.value.points.attributesAllocated.intelligence = 0;
-
-	player.value.combat.resourcesFix();
-}
-
 const applyAttributeAllocation = () => {
 	player.value.points.attributesAllocated.strength = 0;
 	player.value.points.attributesAllocated.agility = 0;
@@ -719,66 +711,12 @@ const getPlayerAbilities = (): Ability[] => {
 				<button @click="endCombat">Continue</button>
 			</div>			
 			<TalentTree v-if="isWindowOpen(Window.TalentTree)" :player="player" :toggleWindow="toggleWindow"/>
-			<div class="player-info window" v-if="isWindowOpen(Window.Character)">
-				<div class="window__header">
-					<div class="window__name">Character</div>
-					<div class="window__close" @click="toggleWindow(Window.Character)">Close</div>
-				</div>
-				<div class="player-info__content window__content">
-					<div class="player-info__attribute-list">
-						<div class="player-info__attribute-value">{{ player.combat.attributes.strength }}</div>
-						<div class="player-info__attribute-name">Strength</div>
-						<div class="button-list">
-							<button class="button-add"
-								v-if="player.points.attributesAvailable > 0 && !combat.isInProgress"
-								@click="allocateAttributePoint('strength', 1)">+</button>
-							<button class="button-cancel"
-								v-if="player.points.attributesAllocated.strength > 0 && !combat.isInProgress"
-								@click="allocateAttributePoint('strength', -1)">-</button>
-						</div>
-						<div class="player-info__attribute-value">{{ player.combat.attributes.agility }}</div>
-						<div class="player-info__attribute-name">Agility</div>
-						<div class="button-list">
-							<button class="button-add"
-								v-if="player.points.attributesAvailable > 0 && !combat.isInProgress"
-								@click="allocateAttributePoint('agility', 1)">+</button>
-							<button class="button-cancel"
-								v-if="player.points.attributesAllocated.agility > 0 && !combat.isInProgress"
-								@click="allocateAttributePoint('agility', -1)">-</button>
-						</div>
-						<div class="player-info__attribute-value">{{ player.combat.attributes.intelligence }}</div>
-						<div class="player-info__attribute-name">Intelligence</div>
-						<div class="button-list">
-							<button class="button-add"
-								v-if="player.points.attributesAvailable > 0 && !combat.isInProgress"
-								@click="allocateAttributePoint('intelligence', 1)">+</button>
-							<button class="button-cancel"
-								v-if="player.points.attributesAllocated.intelligence > 0 && !combat.isInProgress"
-								@click="allocateAttributePoint('intelligence', -1)">-</button>
-						</div>
-					</div>
-					<div class="player-info__attribute-allocation"
-						v-if="player.points.attributesAvailable > 0 || Object.values(player.points.attributesAllocated).some(value => value > 0)">
-						<div class="player-info__attribute-allocation__text">{{ player.points.attributesAvailable }}
-							point{{
-								player.points.attributesAvailable === 1 ? "" : "s" }} available</div>
-						<div class="button-list"
-							v-if="Object.values(player.points.attributesAllocated).some(value => value > 0) && !combat.isInProgress">
-							<button @click="applyAttributeAllocation">Apply</button>
-							<button @click="cancelAttributeAllocation">Cancel</button>
-						</div>
-					</div>
-					<div class="player-info__stat-list">
-						<div class="player-info__stat-name">Health</div>
-						<div class="player-info__stat-value">{{ player.combat.health }} / {{ player.combat.maxHealth }}
-						</div>
-						<div class="player-info__stat-name">Mana</div>
-						<div class="player-info__stat-value">{{ player.combat.mana }} / {{ player.combat.maxMana }}
-						</div>
-						<div class="player-info__stat-name">Attack Damage</div>
-						<div class="player-info__stat-value">{{ player.combat.attackDamage }}</div>
-					</div>
-				</div>
+			<Inventory v-if="isWindowOpen(Window.Inventory)" :player="player" :toggleWindow="toggleWindow"/>
+			<PlayerInfo v-if="isWindowOpen(Window.Character)" :player="player" :toggleWindow="toggleWindow" :combat="combat" :applyAttributeAllocation="applyAttributeAllocation"/>
+			<div class="tool-bar">
+				<div class="tool-bar__button" :class="{ 'active': isWindowOpen(Window.Character)}" @click="toggleWindow(Window.Character)">⚔️</div>
+				<div class="tool-bar__button" :class="{ 'active': isWindowOpen(Window.TalentTree)}" @click="toggleWindow(Window.TalentTree)">🌳</div>
+				<div class="tool-bar__button" :class="{ 'active': isWindowOpen(Window.Inventory)}" @click="toggleWindow(Window.Inventory)">💼</div>
 			</div>
 			<!-- <pre> {{ JSON.stringify(player.combat.talents, null, 2) }}</pre> -->
 		</div>
@@ -795,76 +733,6 @@ const getPlayerAbilities = (): Ability[] => {
 	scale: 1;
 }
 
-
-
-.player-info {
-	top: 2em;
-	bottom: 2em;
-	right: 2em;
-	width: 300px;
-
-	&__attribute-allocation {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-
-		&__text {
-			padding-block: .5em;
-			border: 1px solid transparent;
-		}
-	}
-
-	&__attribute-list {
-		font-size: 20px;
-		display: grid;
-		grid-template-columns: auto 1fr auto;
-		align-items: center;
-		gap: .5em;
-
-		.button-list {
-			display: grid;
-			grid-template-columns: 1fr 1fr;
-
-			.button-cancel {
-				grid-column: 2;
-			}
-		}
-	}
-
-	&__attribute-value {
-		display: grid;
-		place-content: center;
-		width: 48px;
-		height: 48px;
-		border: 1px solid gray;
-		background-color: hsla(0, 0%, 0%, 0.5);
-		border-radius: 50%;
-	}
-
-	&__stat-list {
-		border: 1px solid gray;
-		background-color: hsla(0, 0%, 0%, 0.5);
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-
-		&>div:nth-child(4n+3),
-		&>div:nth-child(4n+4) {
-			background-color: hsla(0, 0%, 100%, 0.15);
-			/* Replace with your desired color */
-		}
-	}
-
-	&__stat-name,
-	&__stat-value {
-		padding: .5em;
-	}
-
-	&__stat-value {
-		color: lime;
-		text-align: right;
-	}
-}
-
 .ui {
 	position: absolute;
 	inset: 0;
@@ -878,6 +746,27 @@ const getPlayerAbilities = (): Ability[] => {
 		font-size: 12px;
 		text-shadow: 1px 1px 1px black;
 		opacity: .5;
+	}
+}
+
+.tool-bar {
+	position: absolute;
+	right: calc(2rem + 1px);
+	bottom: 0em;
+	display: flex;
+	gap: 1px;
+	cursor: pointer;
+	font-size: 1.25em;
+
+	&__button {
+		padding: .15em;
+		text-shadow: 1px 1px 1px black;
+		margin-right: -0px;
+
+		&.active {
+			outline: 1px solid gray;
+			background-color: hsla(0, 0%, 0%, 0.5);
+		}
 	}
 }
 
