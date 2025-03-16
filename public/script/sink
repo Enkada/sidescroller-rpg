@@ -1,0 +1,11 @@
+say "Do you want to wash hands?"
+menu [
+    { "label": "yes", "title": "Wash hands" },
+    { "label": "no", "title": "Go back" }
+]
+
+label yes
+say "Your hands are clean now"
+
+label no
+exit

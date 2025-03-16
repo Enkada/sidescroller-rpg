@@ -11,3 +11,5 @@ export const getById = <T extends { id: string }>(array: T[], id: string): T => 
 }
 
 export const getXP = (level: number): number => level * 100;
+
+export const percentageValue = (value: number, ratio: number): number => Math.ceil(value * ratio);

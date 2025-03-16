@@ -16,9 +16,9 @@ const props = defineProps<{
         @click="player.mana >= ability.cost && !player.cooldowns[ability.id] && !player.usedAbilities.includes(ability.id) && castAbility(ability, player, enemy)">
         <img :src="`./ability/${ability.icon}`" />
         <div class="ability__cost" v-if="ability.cost">{{ ability.cost }}</div>
-        <div class="ability__tooltip">
-            <div class="ability__tooltip__header">
-                <div class="ability__tooltip__name">{{ ability.name }}</div>
+        <div class="ability__tooltip tooltip">
+            <div class="ability__tooltip__header tooltip__header">
+                <div class="ability__tooltip__name tooltip__name">{{ ability.name }}</div>
                 <div class="ability__tooltip__cost" v-if="ability.cost">Cost: {{ ability.cost }}</div>
             </div>
             <div class="ability__tooltip__description" v-html="ability.description.replace(/%(.+?)%/g, (match, key) => `<span class='value'>
@@ -78,26 +78,9 @@ const props = defineProps<{
 
     &__tooltip {
         display: none;
-        gap: .5em;
-        position: absolute;
         left: 0;
         top: 0;
         translate: -1px -100%;
-        padding: 1em;
-        z-index: 1000;
-        background-color: hsla(0, 0%, 0%, 0.8);
-        border: 1px solid white;
-        width: max-content;
-        max-width: 420px;
-
-        &__header {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        &__name {
-            font-size: 20px;
-        }
 
         &__cost {
             color: var(--clr-mana);

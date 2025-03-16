@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ContainerContext, isEquipment, ItemType, type Container, type Item } from '../types/Item';
+import { ContainerContext, isEquipment, ItemType, statNames, type Container, type Item, type ItemStats } from '../types/Item';
 import type { Player } from '../types/CombatEntity';
+import { percentageValue } from '../utils';
+import { SELL_RATIO } from '../globals';
 
 
-const props = defineProps<{ container: Container, context: ContainerContext, player: Player }>();
+const props = defineProps<{ container: Container, context: ContainerContext, player: Player, shopContainer?: Container }>();
 
 const selectedItem = ref<string | null>(null);
 
@@ -33,14 +35,54 @@ const equipItem = (item: Item) => {
 const unequipItem = (item: Item) => {
     props.container.move(item, props.player.inventory);
     selectedItem.value = null;
+    props.player.combat.resourcesFix();
 }
 
 const doubleClick = (item: Item) => {
     if (props.context === ContainerContext.Equipment) {
         unequipItem(item);
     }
+    else if (props.context === ContainerContext.Loot) {
+        takeItem(item);
+    }
+    else if (props.context === ContainerContext.Shop) {
+        buyItem(item);
+    }
+    else if (props.shopContainer && props.context === ContainerContext.Inventory) {
+        sellItem(item);
+    }
     else if (props.context === ContainerContext.Inventory && isEquipment(item)) {
         equipItem(item);
+    }
+}
+
+const buyItem = (item: Item) => {
+    if (props.player.gold >= item.value) {
+        if (props.player.inventory.add(item)) {
+            props.player.gold -= item.value;
+        }
+    }
+}
+
+const sellItem = (item: Item) => {
+    props.container.remove(item);
+    props.player.gold += percentageValue(item.value * (item.count || 1), SELL_RATIO);
+}
+
+const sellOneItem = (item: Item) => {
+    if (item.count && item.count > 1 && item.isStackable) {
+        item.count -= 1;
+        props.player.gold += percentageValue(item.value, SELL_RATIO);
+    }
+}
+
+const takeItem = (item: Item) => {
+    if (item.id === 'gold') {
+        props.player.gold += item.count || 1;
+        props.container.remove(item);
+    }
+    else {
+        props.container.move(item, props.player.inventory);
     }
 }
 </script>
@@ -52,17 +94,25 @@ const doubleClick = (item: Item) => {
             <img :src="`./item/${item.icon}`" @contextmenu.prevent="selectedItem = item.uuid || null" @dblclick="doubleClick(item)">
             <div class="item__count" v-if="item.isStackable">{{ item.count }}</div>
             <div class="item__menu" v-if="item.uuid === selectedItem">
-                <div class="item__menu__action" v-if="item.type === ItemType.Consumable">Use</div>
+                <div class="item__menu__action" v-if="item.type === ItemType.Consumable && context === ContainerContext.Inventory">Use</div>
                 <div class="item__menu__action" v-if="isEquipment(item) && context === ContainerContext.Inventory"
                     @click="equipItem(item)">Equip</div>
                 <div class="item__menu__action" v-if="context === ContainerContext.Equipment" @click="unequipItem(item)">Unequip</div>
-                <div class="item__menu__action" @click="destroyItem(item)">Destroy</div>
+                <div class="item__menu__action" v-if="context === ContainerContext.Loot" @click="takeItem(item)">Take</div>
+                <div class="item__menu__action" v-if="[ContainerContext.Inventory, ContainerContext.Equipment].includes(context) && !shopContainer" @click="destroyItem(item)">Destroy</div>
+                <div class="item__menu__action" v-if="context === ContainerContext.Shop" @click="buyItem(item)">Buy</div>
+                <div class="item__menu__action" v-if="shopContainer && context !== ContainerContext.Shop" @click="sellItem(item)">Sell {{ item.isStackable && (item.count || 0) > 1 ? 'All' : '' }}</div>
+                <div class="item__menu__action" v-if="shopContainer && context !== ContainerContext.Shop && item.isStackable && (item.count || 0) > 1" @click="sellOneItem(item)">Sell 1</div>
             </div>
-            <div class="item__tooltip" v-if="item.uuid !== selectedItem">
-                <div class="item__tooltip__header">
-                    <div class="item__tooltip__name">{{ item.name }}</div>
+            <div class="item__tooltip tooltip" v-if="item.uuid !== selectedItem">
+                <div class="item__tooltip__header tooltip__header">
+                    <div class="item__tooltip__name tooltip__name">{{ item.name }}</div>
                 </div>
                 <div class="item__tooltip__description" v-if="item.description">{{ item.description }}</div>
+                <div class="item__tooltip__stat-list" v-if="item.stats" >
+                    <div class="item__tooltip__stat" v-for="stat in Object.entries(item.stats)"><span class="value">{{ stat[1] >= 0 ? '+' : '-' }} {{ stat[1] }}</span> {{ statNames[stat[0]] }}</div>
+                </div>
+                <div class="item__tooltip__value gold">{{ context === ContainerContext.Shop || item.id === 'gold' ? item.value * (item.count || 1) : percentageValue(item.value * (item.count || 1), SELL_RATIO) }} 🪙</div>
             </div>
         </div>
         <div class="item empty" v-for="_ in container.size - container.items.length">
@@ -72,7 +122,7 @@ const doubleClick = (item: Item) => {
     </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss">
 .item-container {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -164,28 +214,13 @@ const doubleClick = (item: Item) => {
 
     &__tooltip {
         display: none;
-        gap: .5em;
-        position: absolute;
         left: 0;
         bottom: 0;
         translate: -100% 1px;
-        padding: 1em;
-        z-index: 1000;
-        background-color: hsla(0, 0%, 0%, 0.8);
-        border: 1px solid var(--clr);
-        width: max-content;
-        max-width: 420px;
 
-        pointer-events: none;
-
-        &__header {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        &__name {
-            font-size: 20px;
-            color: var(--clr);
+        &__value {
+            text-align: right;
+            line-height: 1;
         }
     }
 

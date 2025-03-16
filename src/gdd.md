@@ -1,10 +1,10 @@
 # TODO
-Levels, upgrades
-Items
-Floating text
+Consumable Items
+Meaningful talents
+Dialgue Scripts
 
 Focus - Ultimates: Unlocked at Level 5, requires full "Focus" meter (earned via taking damage).
-Turn order determined by Agility (Player Agility +1d20 vs. Enemy Agility +1d20).
+Turn order determined by Agility.
 
 # Overview
 Name: Sidescroller RPG
@@ -49,6 +49,7 @@ At the end of combat you receive XP = EnemyLevel * 20. There's a chance you rece
 Each entity during combat has the following:
 * Health = 10 * Strength 
 * Mana = 10 * Intelligence 
+* Mana Regeneration = 1 * Intelligence 
 * Level
 * Stats:
     * Strength
@@ -58,8 +59,8 @@ Each entity during combat has the following:
 * List of abilities on cooldown
 * Equipment that provides stats
 * Crit chance = 5% + 0.5% * Agility
-* Crit multiplier = 200% + 1% * Agility
-* Atttack damage = 2 * Strength 
+* Crit multiplier = 50% + 10% * Agility
+* Atttack damage = 2 * Strength + 0.5 * Agility
 
 # Levelling
 You earn XP by defeating enemies and completing quests.
@@ -82,8 +83,7 @@ The item can be one of the following category:
 * Armor
 * Amulet/Necklace
 * Ring
-* One-handed Weapon
-* Two-handed Weapon (occupies both Main and Second weapon slots)
+* Weapon
 * Quest
 * Junk
 * Consumable

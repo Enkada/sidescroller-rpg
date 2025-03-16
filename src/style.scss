@@ -10,6 +10,7 @@
     --clr-xp-bg: hsl(300, 100%, 14%);
 
     --clr-value: lime;
+    --clr-gold: gold;
 
     --clr-item-junk: hsl(0, 0%, 50%);
     --clr-item-common: hsl(0, 0%, 90%);
@@ -62,6 +63,10 @@ body {
     color: var(--clr-value);
 }
 
+.gold {
+    color: var(--clr-gold);
+}
+
 button {
     cursor: pointer;
     background-color: hsla(0, 0%, 0%, 0.5);
@@ -78,6 +83,32 @@ button {
 .button-list {
     display: flex;
     gap: .25em;
+}
+
+.tooltip {
+    display: grid;
+    gap: .5em;
+    position: absolute;
+    padding: 1em;
+    background-color: hsla(0, 0%, 0%, 0.8);
+    border: 1px solid var(--clr, white);
+    width: max-content;
+    min-width: 100px;
+    max-width: 300px;    
+    height: fit-content;
+    z-index: 1000;    
+
+    pointer-events: none;
+
+    &__header {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    &__name {
+        font-size: 20px;
+        color: var(--clr, white);
+    }
 }
 
 .window {

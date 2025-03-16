@@ -232,9 +232,9 @@ const resetTalentPoints = () => {
                                 'passive': talent.type === TalentType.Passive,
                                 'ability': talent.type === TalentType.Ability}">
                             <img :src="`./ability/${getTalentData(talent).icon}`">
-                            <div class="talent__tooltip" @click.stop>
-                                <div class="talent__tooltip__header">
-                                    <div class="talent__tooltip__name">{{ getTalentData(talent).name }}</div>
+                            <div class="talent__tooltip tooltip" @click.stop>
+                                <div class="talent__tooltip__header tooltip__header">
+                                    <div class="talent__tooltip__name tooltip__name">{{ getTalentData(talent).name }}</div>
                                 </div>
                                 <div class="talent__tooltip__description" v-html="getTalentData(talent).description"></div>
                             </div>
@@ -442,32 +442,9 @@ const resetTalentPoints = () => {
 
         &__tooltip {
             display: none;
-            gap: .5em;
-            position: absolute;
             right: 0;
             top: 0;
             translate: 100% -1px;
-            padding: 1em;
-            z-index: 1000;
-            background-color: hsla(0, 0%, 0%, 0.8);
-            border: 1px solid white;
-            width: max-content;
-            max-width: 420px;
-
-            &__header {
-                display: flex;
-                justify-content: space-between;
-            }
-
-            &__name {
-                font-size: 20px;
-            }
-
-            &__description {
-                .value {
-                    color: lime;
-                }
-            }
         }
 
         img {

@@ -56,7 +56,7 @@ export const ABILITIES: Ability[] = [
         icon: "760.jpg",
         name: "Heal",
         values: {
-            heal: (c: CombatEntity) => c.attributes.intelligence * 2
+            heal: (c: CombatEntity) => c.intelligence * 2
         },
         description: "Heal yourself for %heal% health",
         cost: 20,
@@ -79,7 +79,7 @@ export const ABILITIES: Ability[] = [
         icon: "800.jpg",
         name: "Healing Touch",
         values: {
-            heal: (c: CombatEntity) => c.attributes.intelligence,
+            heal: (c: CombatEntity) => c.intelligence,
         },
         constants: {
             duration: 3,

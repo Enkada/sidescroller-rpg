@@ -40,9 +40,9 @@ const manaPercentage = computed(() => Math.max(0, props.entity.mana / props.enti
 				}" v-for="effect in props.entity.effects" :key="effect.id">
 					<img :src="`./ability/${getById(EFFECTS, effect.id).icon}`">
 					<div class="effect__duration">{{ effect.duration }}</div>
-					<div class="effect__tooltip">
-						<div class="effect__tooltip__header">
-							<div class="effect__tooltip__name">{{ getById(EFFECTS, effect.id).name }}</div>
+					<div class="effect__tooltip tooltip">
+						<div class="effect__tooltip__header tooltip__header">
+							<div class="effect__tooltip__name tooltip__name">{{ getById(EFFECTS, effect.id).name }}</div>
 						</div>
 						<div class="effect__tooltip__description">{{ getById(EFFECTS, effect.id).description }}</div>
 					</div>
@@ -71,15 +71,15 @@ const manaPercentage = computed(() => Math.max(0, props.entity.mana / props.enti
 	width: 32px;
 	height: 32px;
 	cursor: pointer;
-	--clr-type: gray;
-	border: 1px solid var(--clr-type);
+	--clr: gray;
+	border: 1px solid var(--clr);
 
 	&--buff {
-		--clr-type: hsl(150, 100%, 42%);
+		--clr: hsl(150, 100%, 42%);
 	}
 
 	&--debuff {
-		--clr-type: hsl(0, 100%, 46%);
+		--clr: hsl(0, 100%, 46%);
 	}
 
 	&:hover {
@@ -98,33 +98,9 @@ const manaPercentage = computed(() => Math.max(0, props.entity.mana / props.enti
 
 	&__tooltip {
 		display: none;
-		gap: .5em;
-		position: absolute;
 		left: 0;
 		bottom: 0;
 		translate: -1px 100%;
-		padding: 1em;
-		z-index: 1000;
-		background-color: hsla(0, 0%, 0%, 0.8);
-		border: 1px solid var(--clr-type);
-		width: max-content;
-		max-width: 420px;
-
-		&__header {
-			display: flex;
-			justify-content: space-between;
-		}
-
-		&__name {
-			font-size: 20px;
-			color: var(--clr-type);
-		}
-
-		&__description {
-			.value {
-				color: lime;
-			}
-		}
 	}
 
 	&__duration {

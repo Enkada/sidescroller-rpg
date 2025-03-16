@@ -20,6 +20,30 @@ export enum ItemRarity {
     Legendary = 'legendary'
 }
 
+export type ItemStats = {
+    health?: number
+    mana?: number
+    strength?: number
+    agility?: number
+    intelligence?: number
+    attackDamage?: number
+    critChance?: number
+    critMultiplier?: number
+    manaRegen?: number
+}
+
+export const statNames: Record<string, string> = {
+    health: "Health",
+    mana: "Mana",
+    strength: "Strength",
+    agility: "Agility",
+    intelligence: "Intelligence",
+    attackDamage: "Attack Damage",
+    critChance: "Crit Chance",
+    critMultiplier: "Crit Multiplier",
+    manaRegen: "Mana Regen"
+}
+
 export type Item = {
     id: string,
     icon: string,
@@ -28,15 +52,59 @@ export type Item = {
     type: ItemType
     rarity: ItemRarity
     isStackable?: boolean
-    // level, value/cost
+    value: number
+    // level
     uuid?: string
     count?: number
+    stats?: ItemStats
 }
+
+export type LootChance = {
+    item: string
+    chance: number
+    level: number
+    count?: { min: number, max: number }
+}
+
+export type LootTable = LootChance[]
+
+export const GLOBAL_LOOT_TABLE: LootTable = [
+    { item: "health_potion", chance: 0.1, level: 1 },
+    { item: "mana_potion", chance: 0.1, level: 1 },
+    { item: "simple_axe", chance: 0.1, level: 1 },
+    { item: "simple_armor", chance: 0.1, level: 1 },
+    { item: "amulet_of_life", chance: 0.1, level: 2 },
+]
+
+export const generateLoot = (lootTable: LootTable, level: number = 1): Item[] => {
+    const loot: Item[] = [];
+
+    lootTable.forEach((lootChance) => {
+        // Check if the item's level requirement is met
+        if (lootChance.level <= level) {
+            // Perform a random check based on the item's chance
+            const random = Math.random();
+            if (random <= lootChance.chance) {
+                // Determine the count of the item to generate
+                const count = lootChance.count
+                    ? Math.floor(Math.random() * (lootChance.count.max - lootChance.count.min + 1)) + lootChance.count.min
+                    : 1;
+
+                // Create the item with the determined count and add it to the loot array
+                const item = createItem(lootChance.item, count);
+                loot.push(item);
+            }
+        }
+    });
+
+    return loot;
+};
 
 export enum ContainerContext {
     Inventory = 'inventory',
     Equipment = 'equipment',
-    Shop = 'shop'
+    Shop = 'shop',
+    Loot = 'loot'
 }
 
 export class Container {
@@ -45,8 +113,8 @@ export class Container {
         public size: number
     ) {}
 
-    public static create(size: number): Container {
-        return new Container([], size);
+    public static create(size: number, items?: Item[]): Container {
+        return new Container(items ?? [], size);
     }
 
     get length(): number {
@@ -110,7 +178,8 @@ export const ITEMS: Item[] = [
         description: "Restores 10 health",
         isStackable: true,
         type: ItemType.Consumable,
-        rarity: ItemRarity.Common
+        rarity: ItemRarity.Common,
+        value: 10
     },
     {
         id: "mana_potion",
@@ -119,7 +188,17 @@ export const ITEMS: Item[] = [
         isStackable: true,
         description: "Restores 10 mana",
         type: ItemType.Consumable,
-        rarity: ItemRarity.Common
+        rarity: ItemRarity.Common,
+        value: 10
+    },
+    {
+        id: "gold",
+        icon: "2018.jpg",
+        name: "Gold",
+        isStackable: true,
+        type: ItemType.Junk,
+        rarity: ItemRarity.Legendary,
+        value: 1
     },
     {
         id: "bone",
@@ -127,42 +206,66 @@ export const ITEMS: Item[] = [
         name: "Bone",
         isStackable: true,
         type: ItemType.Junk,
-        rarity: ItemRarity.Junk
+        rarity: ItemRarity.Junk,
+        value: 10
     },
     {
         id: "sword_of_victory",
         icon: "3889.jpg",
         name: "Sword of Victory",
         type: ItemType.Weapon,
-        rarity: ItemRarity.Uncommon
+        rarity: ItemRarity.Uncommon,
+        stats: {
+            attackDamage: 20
+        },
+        value: 10
     },
     {
         id: "simple_armor",
         icon: "398.jpg",
         name: "Simple Armor",
         type: ItemType.Armor,
-        rarity: ItemRarity.Common
+        rarity: ItemRarity.Common,
+        stats: {
+            health: 50
+        },
+        value: 10
     },
     {
         id: "ring_of_hell",
         icon: "1554.jpg",
         name: "Ring of Hell",
         type: ItemType.Ring,
-        rarity: ItemRarity.Legendary
+        rarity: ItemRarity.Legendary,        
+        stats: {
+            strength: 10,
+            agility: 5,
+            intelligence: 5
+        },
+        value: 100
     },
     {
         id: "amulet_of_life",
         icon: "1435.jpg",
         name: "Amulet of Life",
         type: ItemType.Amulet,
-        rarity: ItemRarity.Uncommon
+        rarity: ItemRarity.Uncommon,        
+        stats: {
+            health: 10,
+            intelligence: 5
+        },
+        value: 10
     },
     {
         id: "simple_axe",
         icon: "62.jpg",
         name: "Simple Axe",
         type: ItemType.Weapon,
-        rarity: ItemRarity.Common
+        rarity: ItemRarity.Common,
+        stats: {
+            attackDamage: 20
+        },
+        value: 10
     }
 ]
 
