@@ -15,6 +15,8 @@ export type Player = {
 	x: number
 	xp: number
 	gold: number
+	variables: Record<string, any>
+	quests: Record<string, boolean> // Quest ID -> Completed
 	inventory: Container
 	points: {
 		attributesAvailable: number
@@ -45,6 +47,7 @@ export class CombatEntity {
 	public talents: Record<string, number>; // Talent ID -> Level
 	public usedAbilities: string[];
 	public equipment: Equipment;
+	public sprite: SpriteSet;
 	public effects: { 
 		id: string,
 		duration: number
@@ -52,10 +55,12 @@ export class CombatEntity {
 
 	// Made constructor private to enforce factory pattern
 	private constructor(
+		public id: string,
 		public name: string,
 		public level: number = 1,
 		public attributes: Attributes = { intelligence: 0, strength: 0, agility: 0 },
-		public sprite: SpriteSet
+		public spriteId: string,
+		public attackSound: { id: string, volume: number, variations: number }
 	) {
 		// Initialize health and mana to max values
 		this.health = this.maxHealth;
@@ -69,7 +74,8 @@ export class CombatEntity {
 			ring: Container.create(1), 
 			amulet: Container.create(1) 
 		};
-		this.effects = [];
+		this.effects = [];		
+		this.sprite = CombatEntity.getSpriteSet(spriteId);
 	}
 
 	totalEquipmentStat(stat: keyof ItemStats): number {
@@ -154,9 +160,8 @@ export class CombatEntity {
 	}
 
 	// Factory method to create instances
-	public static create(name: string, level: number, stats: Attributes, spriteId: string): CombatEntity {
-		const sprite = this.getSpriteSet(spriteId);
-		return new CombatEntity(name, level, stats, sprite);
+	public static create(id: string, name: string, level: number, stats: Attributes, spriteId: string, attackSound: { id: string, volume: number, variations: number }): CombatEntity {
+		return new CombatEntity(id, name, level, stats, spriteId, attackSound);
 	}
 
 	// Separate method for sprite validation/loading

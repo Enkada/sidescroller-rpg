@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { Player } from '../types/CombatEntity';
 import { ContainerContext, type Container } from '../types/Item';
-import { Window } from '../utils';
 import ItemContainer from './ItemContainer.vue';
 
-const props = defineProps<{ player: Player, shopContainer: Container, closeShop: () => void }>();
+const props = defineProps<{ player: Player, shopContainer: Container }>();
 
 </script>
 
@@ -12,7 +11,7 @@ const props = defineProps<{ player: Player, shopContainer: Container, closeShop:
     <div class="shop window">
         <div class="window__header">
             <div class="window__name">Shop </div>
-            <div class="window__close" @click="closeShop">Close</div>
+            <div class="window__close btn" @click="$emit('close')">Close</div>
         </div>
         <div class="shop__content window__content">
             <ItemContainer :container="shopContainer" :context="ContainerContext.Shop" :player="player"/>

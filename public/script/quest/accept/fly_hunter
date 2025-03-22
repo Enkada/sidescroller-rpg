@@ -1,0 +1,21 @@
+name Girl
+say "Oh, these pesky flies and spiders have been bothering me for days! They're everywhere, making it impossible to enjoy the outdoors."
+say "I'd be so grateful if someone could help me get rid of them."
+quest_showcase "fly_hunter"
+menu [
+    { "label": "accept", "title": "I'll help you get rid of those pests" },
+    { "label": "decline", "title": "I'm too busy right now" }
+]
+
+label accept
+quest "fly_hunter"
+name Girl
+say "Thank you so much! Please eliminate 5 of those bothersome flies and 5 spiders for me."
+say "You can find them around the area. Once you've dealt with them, come back and I'll reward you for your help!"
+exit
+
+label decline
+quest_showcase_hide
+name Girl
+say "I understand. If you change your mind, I'll still need help with these pests."
+exit 

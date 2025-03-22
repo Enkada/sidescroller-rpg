@@ -2,6 +2,7 @@
 Consumable Items
 Meaningful talents
 Dialgue Scripts
+Sounds
 
 Focus - Ultimates: Unlocked at Level 5, requires full "Focus" meter (earned via taking damage).
 Turn order determined by Agility.

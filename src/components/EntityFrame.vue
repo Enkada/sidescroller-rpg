@@ -15,7 +15,7 @@ const manaPercentage = computed(() => Math.max(0, props.entity.mana / props.enti
 
 <template>
 	<div class="entity-frame" :class="{ 'entity-frame--enemy': props.isEnemy }">
-		<div :style="{ backgroundImage: `url('${entity.sprite.idle.image.src}')` }" class="entity-frame__portrait">
+		<div :style="{ backgroundImage: `url('${entity.sprite.idle.image.src}')`, '--sprite-width': entity.sprite.idle.width + 'px', '--sprite-height': entity.sprite.idle.height + 'px' }" class="entity-frame__portrait">
 		</div>
 		<div class="entity-frame__right">
 			<div class="entity-frame__name">{{ props.entity.name }} Lvl {{ props.entity.level }}</div>
@@ -127,9 +127,13 @@ const manaPercentage = computed(() => Math.max(0, props.entity.mana / props.enti
 	top: 2em;
 	left: 2em;
 
+	animation: slideRight 1s ease;
+
+
 	&--enemy {
 		right: 2em;
 		left: auto;
+		animation: slideLeft 1s ease;
 
 		.effect__tooltip {
 			right: 0;
@@ -140,7 +144,8 @@ const manaPercentage = computed(() => Math.max(0, props.entity.mana / props.enti
 
 	&__portrait {
 		--size: 128px;
-		--sprite-size: 512px;
+		--sprite-width: 512px;
+		--sprite-height: 512px;
 		--zoom: 1.4;
 		--border: 4px;
 		width: calc(var(--size) + var(--border) * 2);
@@ -152,9 +157,9 @@ const manaPercentage = computed(() => Math.max(0, props.entity.mana / props.enti
 		margin-right: -4em;
 
 		background-position:
-			calc(var(--sprite-size) / 2 / var(--zoom) + var(--size) / 2 - var(--sprite-size) / var(--zoom) * 1 - 8px) 
-			calc(var(--sprite-size) / 2 / var(--zoom) + var(--size) / 2 + 32px);
-		background-size: auto calc(var(--sprite-size) / var(--zoom));
+			calc(var(--sprite-width) / 2 / var(--zoom) + var(--size) / 2 - var(--sprite-width) / var(--zoom) * 1 - 8px) 
+			calc(var(--sprite-height) / 2 / var(--zoom) + var(--size) / 2 + clamp(-32px, var(--sprite-height) - 512px + 32px, 32px) );
+		background-size: auto calc(var(--sprite-height) / var(--zoom));
 		box-shadow: inset 0 0 16px 4px rgba(0 0 0 / 50%);
 		z-index: 1;
 	}

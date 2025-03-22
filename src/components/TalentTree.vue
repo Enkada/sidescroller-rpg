@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { onMounted, onUpdated, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { getTalentById, TALENT_TREE, TalentType, type Talent } from '../types/Talent';
 import type { Player } from '../types/CombatEntity';
-import { getById, Window } from '../utils';
+import { getById } from '../utils';
 import { ABILITIES, type Ability } from '../types/Ability';
 
-const props = defineProps<{ player: Player, toggleWindow: (window: Window) => void }>();
+const props = defineProps<{ player: Player }>();
 
 interface Connection {
     x1: number;
@@ -202,7 +202,7 @@ const resetTalentPoints = () => {
     <div class="talent-tree window">
         <div class="window__header">
             <div class="window__name">Talent Tree</div>
-            <div class="window__close" @click="toggleWindow(Window.TalentTree)">Close</div>
+            <div class="window__close btn" @click="$emit('close')">Close</div>
         </div>
         <div class="talent-tree__content window__content">
             <div class="talent-tree__wrapper" :style="{ transform: `translate(${translateX}px, ${translateY}px)` }">

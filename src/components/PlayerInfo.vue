@@ -2,12 +2,11 @@
 import { CRIT_CHANCE_PER_AGI, CRIT_MULT_PER_AGI, DMG_PER_AGI, DMG_PER_STR, HEALTH_PER_STR, MANA_PER_INT, MANA_REGEN_PER_INT } from '../globals';
 import type { Attributes, Player } from '../types/CombatEntity';
 import { ContainerContext } from '../types/Item';
-import { Window } from '../utils';
 import ItemContainer from './ItemContainer.vue';
 import TextToolTip from './TextToolTip.vue';
 
 
-const props = defineProps<{ player: Player, toggleWindow: (window: Window) => void, combat: { isInProgress: boolean }, applyAttributeAllocation: () => void }>();
+const props = defineProps<{ player: Player, combat: { isInProgress: boolean }, applyAttributeAllocation: () => void }>();
 
 const allocateAttributePoint = (attribute: keyof Attributes, points: number) => {
     props.player.points.attributesAvailable -= points;
@@ -36,7 +35,7 @@ const cancelAttributeAllocation = () => {
     <div class="player-info window">
         <div class="window__header">
             <div class="window__name">Character</div>
-            <div class="window__close" @click="toggleWindow(Window.Character)">Close</div>
+            <div class="window__close btn" @click="$emit('close')">Close</div>
         </div>
         <div class="player-info__content window__content">
             <div class="player-info__equipment">

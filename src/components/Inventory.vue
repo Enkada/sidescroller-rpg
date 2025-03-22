@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { Player } from '../types/CombatEntity';
 import { Container, ContainerContext } from '../types/Item';
-import { Window } from '../utils';
 import ItemContainer from './ItemContainer.vue';
 
-const props = defineProps<{ player: Player, toggleWindow: (window: Window) => void, shopContainer?: Container }>();
+const props = defineProps<{ player: Player, shopContainer?: Container }>();
 
 </script>
 
@@ -12,7 +11,7 @@ const props = defineProps<{ player: Player, toggleWindow: (window: Window) => vo
     <div class="inventory window">
         <div class="window__header">
             <div class="window__name">Inventory {{ player.inventory.length }} / {{ player.inventory.size }}</div>
-            <div class="window__close" @click="toggleWindow(Window.Inventory)">Close</div>
+            <div class="window__close btn" @click="$emit('close')">Close</div>
         </div>
         <div class="inventory__content window__content">
             <ItemContainer :container="player.inventory" :context="ContainerContext.Inventory" :player="player" :shopContainer="shopContainer"/>

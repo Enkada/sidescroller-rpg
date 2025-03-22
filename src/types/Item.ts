@@ -1,7 +1,8 @@
 export enum ItemType {
-    Junk,    
-    Consumable,
-    Quest,
+    Junk = 'junk',    
+    Consumable = 'consumable',
+    Quest = 'quest',
+    Currency = 'currency',
     // Equipment  
     Armor = 'armor',
     Amulet = 'amulet',
@@ -104,7 +105,8 @@ export enum ContainerContext {
     Inventory = 'inventory',
     Equipment = 'equipment',
     Shop = 'shop',
-    Loot = 'loot'
+    Loot = 'loot',
+    QuestReward = 'quest_reward'
 }
 
 export class Container {
@@ -196,7 +198,7 @@ export const ITEMS: Item[] = [
         icon: "2018.jpg",
         name: "Gold",
         isStackable: true,
-        type: ItemType.Junk,
+        type: ItemType.Currency,
         rarity: ItemRarity.Legendary,
         value: 1
     },

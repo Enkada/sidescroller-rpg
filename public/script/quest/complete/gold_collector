@@ -1,0 +1,6 @@
+name "Merchant Guild Representative"
+say "Ah, I see you've gathered the required gold! Excellent work, adventurer."
+say "You've proven yourself worthy of the Merchant Guild's trust."
+quest_reward "gold_collector"
+say "Here are your rewards. We look forward to working with you again in the future!"
+exit

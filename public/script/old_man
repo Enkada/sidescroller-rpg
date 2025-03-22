@@ -1,0 +1,31 @@
+name "Old Man"
+say "Hello, young lady"
+name "Sara"
+say "Greetings, old man"
+name "Old Man"
+say "Any questions you want to ask"
+menu [
+    { "label": "q1", "title": "Yes, I have a question. What is the meaning of life?" },
+    { "label": "q2", "title": "What is the purpose of our existence?" },
+    { "label": "no", "title": "No, I dont have any questions" }
+]
+
+label q1
+name "Old Man"
+say "The meaning of life is a philosophical question concerning the significance of life or existence in general. Many different cultures and religions have their own interpretations of the meaning of life."
+name "Sara"
+say "Thank you for your wisdom"
+exit
+
+label q2
+name "Old Man"
+say "The purpose of our existence is a question that has been asked for centuries. Some believe it is to seek happiness, others believe it is to help others, and some believe it is to find one's own path and purpose"
+say "Some might say it's to leave the world better than we found it"
+say "Others believe it's to understand the universe and our place in it"
+say "What do you think, young one?"
+name "Sara"
+say "I'm still figuring it out, but your wisdom helps"
+exit
+
+label no
+exit

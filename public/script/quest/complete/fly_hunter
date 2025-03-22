@@ -1,0 +1,6 @@
+name Girl
+say "You've done it! The area is much better now without those pesky flies and spiders."
+say "I can finally enjoy the outdoors in peace. Thank you for your help!"
+quest_reward "fly_hunter"
+say "Here's your reward. I hope it helps you in your future adventures!"
+exit 

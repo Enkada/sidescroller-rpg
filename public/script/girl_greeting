@@ -1,0 +1,28 @@
+name "Girl"
+say "Hi there! I'm Lily!"
+name "Sara"
+say "Hello Lily, nice to meet you!"
+name "Girl"
+say "You're new around here, aren't you? I haven't seen you before!"
+name "Sara"
+say "Yes, I just arrived. I'm still getting to know the place."
+name "Girl"
+say "Well, welcome! I love making new friends. Would you like to play with me?"
+menu [
+    { "label": "yes", "title": "Yes, I'd love to play!" },
+    { "label": "no", "title": "Maybe another time, I have things to do" }
+]
+
+label yes
+name "Girl"
+say "Yay! That's wonderful! Let's have fun together!"
+name "Sara"
+say "I'm looking forward to it!"
+exit
+
+label no
+name "Girl"
+say "Oh, that's okay! Maybe we can play later when you're not busy?"
+name "Sara"
+say "Of course! I'll come find you when I have time."
+exit

@@ -16,8 +16,8 @@ export const floatingText = ref<FloatingText[]>([]);
 
 export const addFloatingText = (text: string, combat: CombatEntity, type: FloatingTextType) => {
     const offset = type === "crit-damage" || type === "damage"
-        ? combat.name === 'Sara' ? 100 : -100 
-        : combat.name === 'Sara' ? -100 : 100;
+        ? combat.id === "player" ? 100 : -100 
+        : combat.id === "player" ? -100 : 100;
 	floatingText.value.push({
 		text,
 		x: SCREEN_WIDTH / 2 + Math.random() * 50 + offset,

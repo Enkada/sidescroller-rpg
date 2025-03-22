@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, reactive } from 'vue';
 import { ABILITIES, AbilityFlag, type Ability } from './types/Ability';
-import { SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_WIDTH, SCREEN_SWITCH_THRESHOLD, PLAYER_SPEED, COMBAT_RANGE, ANIMATION_SPEED, INTERACTION_RANGE } from './globals';
+import { SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_WIDTH, SCREEN_SWITCH_THRESHOLD, PLAYER_SPEED, COMBAT_RANGE, ANIMATION_SPEED, INTERACTION_RANGE, FOOTSTEP_COOLDOWN } from './globals';
 import { CombatEntity, critCheck, type Player } from './types/CombatEntity';
 import EntityFrame from './components/EntityFrame.vue';
 import AbilityButton from './components/AbilityButton.vue';
-import { createSprite, type Sprite, type SpriteSet } from './types/Sprite';
-import { getById, getXP, hasFlag, Window } from './utils';
+import { createSprite, SPRITES, type Sprite, type SpriteSet } from './types/Sprite';
+import { getById, getXP, hasFlag, Window, playSound, SETTINGS } from './utils';
 import { EffectFlag, EFFECTS } from './types/Effect';
 import { getTalentById, TalentType } from './types/Talent';
 import TalentTree from './components/TalentTree.vue';
@@ -16,6 +16,11 @@ import Inventory from './components/Inventory.vue';
 import Shop from './components/Shop.vue';
 import ItemContainer from './components/ItemContainer.vue';
 import { addFloatingText, floatingText } from './types/FloatingText';
+import { QUESTS, type Quest } from './types/Quest';
+import QuestLog from './components/QuestLog.vue';
+import QuestShowcase from './components/QuestShowcase.vue';
+import Settings from './components/Settings.vue';
+let lastFootstepTime = 0;
 
 const windows = ref<Window[]>([]);
 
@@ -27,11 +32,39 @@ const toggleWindow = (window: Window) => {
 	}
 }
 
-const openWindow = (window: Window) => windows.value.push(window);
+const openWindow = (window: Window) => {
+	// If opening Talents, close all other windows
+	if (window === Window.TalentTree) {
+		windows.value = [Window.TalentTree];
+		return;
+	}
 
-const closeWindow = (window: Window) => windows.value = windows.value.filter(w => w !== window);
+	// If opening QuestLog, close Character window
+	if (window === Window.Quest) {
+		windows.value = windows.value.filter(w => w !== Window.Character);
+	}
+
+	// If opening Character, close QuestLog window
+	if (window === Window.Character) {
+		windows.value = windows.value.filter(w => w !== Window.Quest);
+	}
+
+	// Close Talents window when opening any other window
+	windows.value = windows.value.filter(w => w !== Window.TalentTree);
+
+	// Add the new window if it's not already open
+	if (!windows.value.includes(window)) {
+		windows.value.push(window);
+	}
+}
+
+const closeWindow = (window: Window) => {
+	windows.value = windows.value.filter(w => w !== window);
+}
 
 const isWindowOpen = (window: Window) => windows.value.includes(window);
+
+const questShowcaseId = ref<string | null>(null);
 
 type Screen = {
 	id: string
@@ -103,18 +136,26 @@ enum InteractionType {
 
 enum DialogueType {
 	Shop,
-	Talk
+	Talk,
+	QuestAccept,
+	QuestComplete
 }
 
 type DialogueOption = {
-	text: string
 	type: DialogueType
 
 	// DialogueType.Shop
 	shop?: Container
 
 	// DialogueType.Talk
+	text?: string
+
+	// DialogueType.Talk, DialogueType.QuestAccept, DialogueType.QuestComplete
 	script?: string
+	isUnique?: boolean
+
+	// DialogueType.QuestAccept, DialogueType.QuestComplete
+	quest?: Quest
 }
 
 type ScreenObject = {
@@ -155,11 +196,22 @@ const ENEMIES: Record<string, {
 			{ item: "gold", chance: 1, level: 1, count: { min: 1, max: 10 } },
 			{ item: "bone", chance: .5, level: 1 },
 		],
-		combat: (level: number) => CombatEntity.create("Fly", level, {
+		combat: (level: number) => CombatEntity.create("fly", "Fly", level, {
 			intelligence: 10,
-			strength: 10 + level,
+			strength: 10 + (level - 1),
 			agility: 10 + Math.floor(level / 2)
-		}, "fly")
+		}, "fly", { id: "attack_claw", volume: 1, variations: 3 })
+	},
+	spider: {
+		lootTable: [
+			{ item: "gold", chance: 1, level: 1, count: { min: 1, max: 10 } },
+			{ item: "bone", chance: .5, level: 1 },
+		],
+		combat: (level: number) => CombatEntity.create("spider", "Spider", level, {
+			intelligence: 10,
+			strength: 10 + (level - 1),
+			agility: 10 + Math.floor(level / 2)
+		}, "spider", { id: "attack_claw", volume: 1, variations: 3 })
 	}
 }
 
@@ -171,19 +223,52 @@ const SCREENS: Screen[] = [ // TODO: change to a Record
 	{
 		id: "initial_screen",
 		name: "Initial Screen",
-		background: "DistantLandBG (1).png",
+		background: "Summer1.png",
 		left: "left_screen",
 		right: "right_screen",
 		objects: [
+		setScreenObjectDialogue(
+				createScreenObject(
+					"Girl",
+					createSprite("./entity/girl.png", 512, 512, 40), 460,
+					600, 40
+				),
+				[
+					{
+						text: "Who are you?",
+						type: DialogueType.Talk,
+						script: "girl_greeting"
+					},
+					{
+						type: DialogueType.QuestAccept,
+						quest: getById(QUESTS, "gold_collector"),
+						script: "quest/accept/gold_collector"
+					},
+					{
+						type: DialogueType.QuestComplete,
+						quest: getById(QUESTS, "gold_collector"),
+						script: "quest/complete/gold_collector"
+					},
+					{
+						type: DialogueType.QuestAccept,
+						quest: getById(QUESTS, "fly_hunter"),
+						script: "quest/accept/fly_hunter"
+					},
+					{
+						type: DialogueType.QuestComplete,
+						quest: getById(QUESTS, "fly_hunter"),
+						script: "quest/complete/fly_hunter"
+					}
+				]
+			),
 			setScreenObjectDialogue(
 				createScreenObject(
 					"Some Guy",
 					createSprite("./entity/halberd.png", 291, 267, 24), 320,
-					800, 80
+					980, 80
 				),
 				[
 					{
-						text: "Trade goods",
 						type: DialogueType.Shop,
 						shop: Container.create(8, [
 							createItem("simple_axe"),
@@ -195,7 +280,8 @@ const SCREENS: Screen[] = [ // TODO: change to a Record
 					{
 						text: "Ask about the land",
 						type: DialogueType.Talk,
-						script: "sample"
+						isUnique: true,
+						script: "old_man"
 					}
 				]
 			)
@@ -204,15 +290,15 @@ const SCREENS: Screen[] = [ // TODO: change to a Record
 	{
 		id: "left_screen",
 		name: "Left Screen",
-		background: "DistantLandBG (36).png",
+		background: "Summer6.png",
 		left: null,
 		right: "initial_screen",
-		enemies: [createScreenEnemy("fly", 1)]
+		enemies: [createScreenEnemy("fly", 0.5), createScreenEnemy("spider", 1)]
 	},
 	{
 		id: "right_screen",
 		name: "Right Screen",
-		background: "DistantLandBG (41).png",
+		background: "Summer5.png",
 		left: "initial_screen",
 		right: null,
 		enemies: [createScreenEnemy("fly")]
@@ -223,6 +309,11 @@ const player = ref<Player>({
 	x: 200,
 	xp: 0,
 	gold: 10,
+	variables: {},
+	quests: {
+		// fly_hunter: false,
+		// gold_collector: false
+	},
 	inventory: Container.create(16),
 	points: {
 		attributesAvailable: 3,
@@ -236,7 +327,13 @@ const player = ref<Player>({
 	sprite: {
 		run: createSprite("./entity/player/run.png", 512, 512, 16),
 	},
-	combat: CombatEntity.create("Sara", 1, { intelligence: 10, strength: 10, agility: 10 }, "player"),
+	combat: CombatEntity.create(
+		"player", 
+		"Sara", 
+		1, 
+		{ intelligence: 10, strength: 10, agility: 10 }, 
+		"player", 
+		{ id: "attack", volume: .8, variations: 4 }),
 	flip: false
 })
 
@@ -339,11 +436,13 @@ const processEndOfCombat = () => {
 	postCombat.value.xp = xp;
 
 	const loot: Item[] = generateLoot([...screenEnemy.value?.lootTable || [], ...GLOBAL_LOOT_TABLE], player.value.combat.level);
-	//console.log([...screenEnemy.value?.lootTable || [], ...GLOBAL_LOOT_TABLE]);
 
 	for (const item of loot) {
 		postCombat.value.loot.add(item);
 	}
+
+	incrementVariable("kill", enemy.id);
+	playSound("combat_end", 1);
 
 	setTimeout(() => {
 		player.value.xp += xp;
@@ -369,6 +468,8 @@ watch(() => player.value.xp, (newXp) => {
 	if (newXp >= getXP(player.value.combat.level)) {
 		player.value.xp -= getXP(player.value.combat.level);
 		player.value.combat.level++;
+
+		playSound("levelup", 1);
 
 		player.value.points.attributesAvailable += 3;
 		player.value.points.talent++;
@@ -444,6 +545,8 @@ const castAbility = (ability: Ability, caster: CombatEntity, target: CombatEntit
 			combat.sprite[targetType].start = performance.now();
 
 			const isTargetAlive = processAbility();
+
+			playSound(caster.attackSound.id, caster.attackSound.volume, caster.attackSound.variations);
 
 			if (!isTargetAlive) return;
 
@@ -524,11 +627,14 @@ const onKeyUp = (e: KeyboardEvent) => {
 		case 'b':
 			toggleWindow(Window.Inventory);
 			break;
+		case 'l':
+			toggleWindow(Window.Quest);
+			break;
+		case 'o':
+			toggleWindow(Window.Settings);
+			break;
 		case 'g':
 			player.value.inventory.add(createItem(ITEMS.map(x => x.id)[Math.floor(Math.random() * ITEMS.map(x => x.id).length)]));
-			break;
-		case 't':
-			runScript('sink');
 			break;
 	}
 };
@@ -550,7 +656,7 @@ const drawEntitySprite = (
 	if (!ctx || !canvas) return;
 
 	ctx.save();
-	const tick = performance.now(); // Using performance.now for a smoother timing reference
+	const tick = performance.now();
 	const currentFrame =
 		isFinite
 			? Math.min(Math.floor((tick - initialTick) / animationSpeed), sprite.frameCount - 1)
@@ -562,14 +668,32 @@ const drawEntitySprite = (
 	ctx.scale(flip ? -1 : 1, 1);
 	ctx.translate(-x, -y);
 
-	if (isHighlighted) {
-		ctx.filter = 'drop-shadow(0 0 8px white)';
+	// Show shadow within bounds which is a darker version of the sprite
+	if (SETTINGS.value.shadows) {
+		ctx.save();
+		ctx.globalAlpha = 0.3;
+		ctx.filter = 'brightness(0) blur(2px)';
+		const newX = x - width / 2;
+		const newY = SCREEN_HEIGHT - y - height + sprite.bounds.y * width / sprite.width;
+		ctx.translate(newX, newY);
+		ctx.scale(1, -.5);
+		ctx.translate(-newX, -newY);
+		ctx.drawImage(
+			sprite.image,
+			sprite.width * currentFrame,
+			sprite.bounds.y,
+			sprite.width,
+			sprite.height,
+			newX,
+			newY - 3 * (sprite.bounds.height * width / sprite.width) + 20,
+			width,
+			height
+		);
+		ctx.restore();
 	}
 
-	if (keys.alt) {
-		// draw frame
-		ctx.strokeStyle = "red";
-		ctx.strokeRect(x - width / 2, 720 - y - height + 20, width, height);
+	if (isHighlighted) {
+		ctx.filter = 'drop-shadow(0 0 8px hsla(0, 0%, 100%, 0.4))';
 	}
 
 	ctx.drawImage(
@@ -579,7 +703,7 @@ const drawEntitySprite = (
 		sprite.width,
 		sprite.height,
 		x - width / 2,
-		720 - y - height + 20,
+		SCREEN_HEIGHT - y - height, //720 - y - height + 20,
 		width,
 		height
 	);
@@ -610,14 +734,16 @@ const switchScreen = (screen: Screen, position: "left" | "right") => {
 function gameLoop() {
 	if (!contextRef.value || !canvasRef.value) return;
 	const ctx: CanvasRenderingContext2D = contextRef.value;
-	//ctx.imageSmoothingEnabled = false;
+	ctx.imageSmoothingEnabled = SETTINGS.value.imageSmoothing;
 
 	// Clear canvas
 	ctx.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	const outOfCombat = () => {
-		// --- Update Player Position based on keys ---
-		if (!dialogueMenu.value.length) {
+		const allowMovement = !dialogueMenu.value.length && !script.value;
+
+		// Update Player Position based on keys
+		if (allowMovement) {
 			if (keys.a) {
 				player.value.x -= PLAYER_SPEED;
 				player.value.flip = true;
@@ -628,11 +754,44 @@ function gameLoop() {
 			}
 		}
 
-		if (nearestScreenObject.value && nearestScreenObject.value.interaction === InteractionType.Dialogue && keys.e && dialogueMenu.value.length === 0) {
-			dialogueMenu.value = nearestScreenObject.value.dialogue || [];
+		// Interaction with Screen Objects
+		if (
+			nearestScreenObject.value &&
+			nearestScreenObject.value.interaction === InteractionType.Dialogue &&
+			keys.e &&
+			allowMovement &&
+			nearestScreenObject.value.dialogue
+		) {
+			// Filter out unique dialogue options that have already been seen and already accepted quests
+			const filteredDialogue = nearestScreenObject.value.dialogue.filter(option => {
+				if (option.type === DialogueType.Talk && option.isUnique && option.script) {
+					return !player.value.variables[`script:${option.script}`];
+				}
+				if (option.type === DialogueType.QuestAccept && option.quest) {
+					return !(option.quest.id in player.value.quests);
+				}
+				if (option.type === DialogueType.QuestComplete && option.quest) {
+					// Check if quest is complete by verifying all objectives are met
+					return option.quest.id in player.value.quests && 
+						!player.value.quests[option.quest.id] && // Not already completed
+						option.quest.objectives.every(obj => obj.condition.current(player.value) >= obj.condition.required);
+				}
+				return true;
+			});
+
+			if (filteredDialogue.length === 1 && filteredDialogue[0].type === DialogueType.Shop) {
+				shopContainer.value = filteredDialogue[0].shop;
+				openWindow(Window.Inventory);
+			}
+			else if (filteredDialogue.length === 1 && filteredDialogue[0].type === DialogueType.Talk) {
+				runScript(filteredDialogue[0].script || "");
+			}
+			else {				
+				dialogueMenu.value = filteredDialogue || [];
+			}
 		}
 
-		// --- Screen Switching ---
+		// Screen Switching
 		if (player.value.x < SCREEN_SWITCH_THRESHOLD) {
 			if (currentScreen.value.left) {
 				const nextScreen = SCREENS.find(screen => screen.id === currentScreen.value.left);
@@ -668,6 +827,8 @@ function gameLoop() {
 			player.value.combat.usedAbilities = [];
 			player.value.combat.cooldowns = {};
 
+			playSound("combat_start", 1);
+
 			applyAttributeAllocation();
 			return;
 		}
@@ -690,20 +851,32 @@ function gameLoop() {
 			drawEntitySprite(
 				screenEnemy.value.combat.sprite.idle,
 				screenEnemy.value.position === "left" ? 300 : SCREEN_WIDTH - 300,
-				-105,
+				SPRITES[screenEnemy.value.combat.spriteId].y,
 				PLAYER_WIDTH,
 				ANIMATION_SPEED,
 				screenEnemy.value.position === "right"
 			);
 		}
 
-		// --- Draw Player --- 
+		// Draw Player 
 		// Use the run sprite when moving, idle otherwise. The sprite remains flipped if previously set.
-		const currentPlayerSprite = (keys.a || keys.d) && !dialogueMenu.value.length ? player.value.sprite.run : player.value.combat.sprite.idle;
+		const isMoving = ((keys.a && !keys.d) || (!keys.a && keys.d)) && allowMovement;
+
+		const currentTime = performance.now();
+
+		if (isMoving && (currentTime - lastFootstepTime >= FOOTSTEP_COOLDOWN)) {
+			playSound("footstep", .15, 7);
+			lastFootstepTime = currentTime;
+		}
+		else if (!isMoving) {
+			lastFootstepTime = 0;
+		}
+
+		const currentPlayerSprite = isMoving ? player.value.sprite.run : player.value.combat.sprite.idle;
 		drawEntitySprite(
 			currentPlayerSprite,
 			player.value.x,
-			-105,
+			SPRITES[player.value.combat.spriteId].y,
 			PLAYER_WIDTH,
 			ANIMATION_SPEED,
 			player.value.flip
@@ -714,7 +887,7 @@ function gameLoop() {
 		const drawPlayer = () => drawEntitySprite(
 			player.value.combat.sprite[combat.sprite.player.id as keyof SpriteSet],
 			SCREEN_WIDTH * 2 / 5,
-			-105,
+			SPRITES[player.value.combat.spriteId].y,
 			PLAYER_WIDTH,
 			ANIMATION_SPEED,
 			false,
@@ -727,7 +900,7 @@ function gameLoop() {
 			drawEntitySprite(
 				combat.enemy.sprite[combat.sprite.enemy.id as keyof SpriteSet],
 				SCREEN_WIDTH * 3 / 5,
-				-105,
+				SPRITES[combat.enemy.spriteId].y,
 				PLAYER_WIDTH,
 				ANIMATION_SPEED,
 				true,
@@ -773,6 +946,12 @@ const stopRegen = () => {
 	}
 };
 
+const buttonClick = (e: Event) => {
+	if (e.target instanceof HTMLButtonElement || (e.target instanceof HTMLElement && e.target.classList.contains('btn'))) {
+		playSound("button", .5);
+	}
+};
+
 onMounted(() => {
 	contextRef.value = canvasRef.value?.getContext('2d') || null;
 	canvasRef.value?.addEventListener('contextmenu', event => event.preventDefault());
@@ -780,6 +959,7 @@ onMounted(() => {
 	window.addEventListener('keyup', onKeyUp);
 	gameLoop();
 	startRegen();
+	document.addEventListener('click', buttonClick);
 });
 
 onBeforeUnmount(() => {
@@ -788,6 +968,7 @@ onBeforeUnmount(() => {
 	window.removeEventListener('keydown', onKeyDown);
 	window.removeEventListener('keyup', onKeyUp);
 	stopRegen();
+	document.removeEventListener('click', buttonClick);
 });
 
 watch(() => combat.isInProgress, (isInProgress) => {
@@ -843,11 +1024,15 @@ const selectDialogueOption = (option: DialogueOption) => {
 		shopContainer.value = option.shop;
 		openWindow(Window.Inventory);
 	}
+	else if (option.script) {
+		runScript(option.script);
+	}
 	dialogueMenu.value = [];
 }
 
 const closeShop = () => {
 	shopContainer.value = undefined;
+	closeWindow(Window.Inventory);
 }
 
 const takeAllLoot = () => {
@@ -867,16 +1052,20 @@ const takeAllLoot = () => {
 }
 
 // Script Start
-interface MenuItem {
+interface ScriptMenuItem {
 	label: string;
 	title: string;
+}
+
+const incrementVariable = (type: string, name: string) => {
+	player.value.variables[`${type}:${name}`] = (player.value.variables[`${type}:${name}`] || 0) + 1;
 }
 
 const script = ref('');
 const scriptIndex = ref(-1);
 const scriptActor = ref('');
 const scriptMessage = ref('');
-const scriptMenu = ref<MenuItem[]>([]);
+const scriptMenu = ref<ScriptMenuItem[]>([]);
 
 function parseArguments(str: string) {
 	const regex = /[^\s"]+|"([^"]*)"/gi;
@@ -900,8 +1089,6 @@ const scriptNextLine = () => {
 	const line = getScriptLines()[scriptIndex.value + 1];
 	const args = parseArguments(line);
 
-	console.log(line, args);
-
 	const exit = () => {
 		script.value = '';
 		scriptIndex.value = -1;
@@ -914,12 +1101,41 @@ const scriptNextLine = () => {
 
 	const menu = (json: string) => {
 		const menuItems = JSON.parse(json.replace(/'/g, '"').replace("&apos;", "'"));
-		scriptMenu.value = menuItems.filter((item: MenuItem & { condition: string }) =>
+		scriptMenu.value = menuItems.filter((item: ScriptMenuItem & { condition: string }) =>
 			!("condition" in item) || eval(`${item.condition}`) === true
-		).map((item: MenuItem) => ({
+		).map((item: ScriptMenuItem) => ({
 			label: item.label,
 			title: item.title
 		}));
+	}
+
+	const quest = (questId: string) => {
+		player.value.quests[questId] = false;
+		questShowcaseId.value = null;
+		playSound("quest_accept", 1);
+	}
+
+	const quest_reward = (questId: string) => {
+		const quest = getById(QUESTS, questId);
+		if (!quest) return;
+
+		// Add XP
+		player.value.xp += quest.xp;
+
+		// Add items from reward container
+		if (quest.reward) {
+			[...quest.reward.items].forEach(item => {
+				if (item.id === 'gold') {
+					player.value.gold += item.count || 1;
+				} else {
+					player.value.inventory.add(item);
+				}
+			});
+		}
+
+		// Mark quest as completed
+		player.value.quests[questId] = true;
+		playSound("quest_complete", 1);
 	}
 
 	const say = (message: string) => {
@@ -931,9 +1147,15 @@ const scriptNextLine = () => {
 		scriptActor.value = name;
 	}
 
-	const label = () => { }
+	const label = () => { }	
 
-	//const commands = [exit, _goto, menu, say, name, label];
+	const quest_showcase = (questId: string) => {
+		questShowcaseId.value = questId;
+	}
+
+	const quest_showcase_hide = () => {
+		questShowcaseId.value = null;
+	}
 
 	if (args.length > 0) {
 		const command = args[0];
@@ -944,7 +1166,7 @@ const scriptNextLine = () => {
 	scriptIndex.value = nextIndex;
 }
 
-const handleMenuItemClick = (item: MenuItem) => {
+const handleMenuItemClick = (item: ScriptMenuItem) => {
 	scriptMenu.value = [];
 	scriptIndex.value = getScriptLines().findIndex(line => line.includes(`label ${item.label}`));
 }
@@ -954,7 +1176,7 @@ const getScriptLines = () => {
 		const spreadedJSONRegex = /menu\s*\[\s*([\s\S]+?)\s*\]/g;
 		return script.replace(spreadedJSONRegex, (_: string, json: string) => {
 			const wrappedJSON = json.replace(/\n\s*/g, '');
-			return `menu "[${wrappedJSON.replace("'", '&apos;').replace(/\"/g, "'").replace(/\r/g, '')}]"`;
+			return `menu "[${wrappedJSON.replace(/'/g, '&apos;').replace(/\"/g, "'").replace(/\r/g, '')}]"`;
 		});
 	}
 
@@ -971,13 +1193,15 @@ watch(scriptIndex, () => {
 		return;
 	}
 
-	if (["eval", "label"].includes(parseArguments(getScriptLines()[scriptIndex.value])[0])) {
+	if (["eval", "label", "name", "quest_reward", "quest_showcase", "quest_showcase_hide", "quest_complete", "quest", "quest_showcase_hide"].includes(parseArguments(getScriptLines()[scriptIndex.value])[0])) {
 		scriptNextLine();
 	}
 });
 
 const runScript = async (name: string) => {
 	const response = await fetch(`/script/${name}`);
+
+	incrementVariable("script", name);
 
 	script.value = await response.text();
 	scriptIndex.value = -1;
@@ -1015,52 +1239,57 @@ const runScript = async (name: string) => {
 				<button @click="takeAllLoot">Take All and Continue</button>
 				<button @click="endCombat">Continue</button>
 			</div>
-			<TalentTree v-if="isWindowOpen(Window.TalentTree)" :player="player" :toggleWindow="toggleWindow" />
-			<Inventory v-if="isWindowOpen(Window.Inventory)" :player="player" :toggleWindow="toggleWindow"
+			<TalentTree v-if="isWindowOpen(Window.TalentTree)" :player="player" @close="closeWindow(Window.TalentTree)" />
+			<Inventory v-if="isWindowOpen(Window.Inventory)" :player="player" @close="closeWindow(Window.Inventory)"
 				:shopContainer="shopContainer" />
-			<Shop v-if="shopContainer" :player="player" :shopContainer="shopContainer" :closeShop="closeShop" />
-			<PlayerInfo v-if="isWindowOpen(Window.Character)" :player="player" :toggleWindow="toggleWindow"
+			<Shop v-if="shopContainer" :player="player" :shopContainer="shopContainer" @close="closeShop" />
+			<PlayerInfo v-if="isWindowOpen(Window.Character)" :player="player" @close="closeWindow(Window.Character)"
 				:combat="combat" :applyAttributeAllocation="applyAttributeAllocation" />
+			<QuestLog v-if="isWindowOpen(Window.Quest)" :player="player" @close="closeWindow(Window.Quest)" />
+			<QuestShowcase v-if="questShowcaseId" :questId="questShowcaseId" :player="player" />
+			<Settings v-if="isWindowOpen(Window.Settings)" @close="closeWindow(Window.Settings)" />
 			<div class="floating-text-list">
 				<div v-for="text in floatingText" :class="`floating-text ${text.type}`"
 					:style="{ left: `${text.x}px`, top: `${text.y}px` }">{{ text.text }}</div>
 			</div>
 			<div class="tool-bar">
-				<div class="tool-bar__button" :class="{ 'active': isWindowOpen(Window.Character) }"
+				<div class="tool-bar__button btn" :class="{ 'active': isWindowOpen(Window.Character) }"
 					@click="toggleWindow(Window.Character)">⚔️</div>
-				<div class="tool-bar__button" :class="{ 'active': isWindowOpen(Window.TalentTree) }"
+				<div class="tool-bar__button btn" :class="{ 'active': isWindowOpen(Window.TalentTree) }"
 					@click="toggleWindow(Window.TalentTree)">🌳</div>
-				<div class="tool-bar__button" :class="{ 'active': isWindowOpen(Window.Inventory) }"
+				<div class="tool-bar__button btn" :class="{ 'active': isWindowOpen(Window.Inventory) }"
 					@click="toggleWindow(Window.Inventory)">💼</div>
+				<div class="tool-bar__button btn" :class="{ 'active': isWindowOpen(Window.Quest) }"
+					@click="toggleWindow(Window.Quest)">📜</div>
+				<div class="tool-bar__button btn" :class="{ 'active': isWindowOpen(Window.Settings) }"
+					@click="toggleWindow(Window.Settings)">⚙️</div>
 			</div>
-			<div class="dialogue-menu" v-if="dialogueMenu.length">
-				<button class="dialogue-menu__option" v-for="option in dialogueMenu"
+
+			<div class="dialogue__menu" v-if="dialogueMenu.length">
+				<button v-for="(option, i) in dialogueMenu" class="dialogue__menu__item" :style="{ '--index': i }"
 					@click="selectDialogueOption(option)">
-					{{ option.text }}
+					{{ option.type === DialogueType.Shop ? '💰 Shop' : option.type === DialogueType.QuestAccept ? `❗${option.quest?.title}` : option.type === DialogueType.QuestComplete ? `✔️ ${option.quest?.title}` : option.text }}
 				</button>
-				<button class="dialogue-menu__option" @click="dialogueMenu = []">Return</button>
+				<button @click="dialogueMenu = []" class="dialogue__menu__item" :style="{ '--index': dialogueMenu.length }" >Return</button>
 			</div>
-			<!-- <pre> {{ JSON.stringify(floatingText, null, 2) }}</pre> -->
-			<div v-if="script !== ''" class="dialogue" @click="scriptNextLine">
-				<div class="dialogue__wrapper">
-					<div class="dialogue__actor">{{ scriptActor }}</div>
-					<div class="dialogue__message">
-						<div class="dialogue__message__text" :key="scriptMessage">
-							<div v-for="(char, i) in scriptMessage.split('')" :key="i" class="dialogue__message__char"
-								:style="{ '--index': i }">
-								{{ char }}
-							</div>
+
+			<div v-if="script !== ''" class="dialogue">
+				<div class="dialogue__panel" @click="scriptNextLine">
+					<div class="dialogue__actor" :key="scriptActor">{{ scriptActor }}</div>
+					<div class="dialogue__message" :key="scriptMessage">
+						<div v-for="(char, i) in scriptMessage.split('')" :key="i" class="dialogue__message__char"
+							:style="{ '--index': i }">
+							{{ char }}
 						</div>
 					</div>
 				</div>
-			</div>
-
-			<div v-if="script !== '' && scriptMenu.length" class="menu">
-				<div v-for="(item, i) in scriptMenu" :key="i" class="menu__item" :style="{ '--index': i }"
-					@click="handleMenuItemClick(item)">
-					{{ item.title }}
+				<div class="dialogue__menu" v-if="scriptMenu.length">
+					<button v-for="(item, i) in scriptMenu" :key="i" class="dialogue__menu__item" :style="{ '--index': i }" @click="handleMenuItemClick(item)" >
+						{{ item.title.replace(/\&apos\;/g, "'") }}
+					</button>
 				</div>
 			</div>
+			<!-- <pre> {{ JSON.stringify(player.variables, null, 2) }}</pre> -->
 		</div>
 	</div>
 </template>
@@ -1070,89 +1299,88 @@ const runScript = async (name: string) => {
 	width: 1280px;
 	height: 720px;
 	//outline: 1px solid yellow;
+	image-rendering: pixelated;
 	background-size: cover;
 	position: relative;
 	scale: 1;
 }
 
 .dialogue {
-    position: absolute;
-    bottom: 0;
-    animation: fadeIn 1s ease;
+	position: absolute;
+	display: grid;
+	place-items: center;
+	inset: 0;
+	pointer-events: none;
+	
+    animation: opacityIn 1s ease;
 
-    background-image: linear-gradient(to top, var(--clr-background), hsla(0, 0%, 0%, 0));
-    height: 20vh;
-    width: 100vw;
-    display: grid;
-    justify-content: center;
-    align-items: center;
+	&__panel {
+		position: absolute;
+		pointer-events: auto;
+		cursor: pointer;
+		bottom: 0;
+		background-color: hsla(0, 0%, 0%, 0.7);
+		backdrop-filter: blur(2px);
+		padding: 1em;
+		display: grid;
+		place-items: center;
+		width: 100%;
+		height: 200px;
+	}
 
-    &__wrapper {      
-        max-width: 800px;
-    }
+	&__menu {
+		position: absolute;
+		pointer-events: auto;
+		gap: .5em;
+		display: grid;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
 
-    &__actor {
-        font-size: 1.25em;
-        padding: .75em;
+		width: 600px;
 
-        &:empty {
-            display: none;
-        }
-    }
+		&__item {
+			opacity: 0;
+			animation: opacityIn .5s forwards;
+			animation-delay: calc(.2s * var(--index));
 
-    &__message {
+			background-color: transparent;
+			background-image: linear-gradient(to right, hsla(0, 0%, 0%, 0) 0%, hsla(0, 0%, 0%, 0.8) 25%, hsl(0, 0%, 0%, 0.8) 75%, hsla(0, 0%, 0%, 0) 100%);
+			border: none;
 
-        &__text {
-            line-height: 1.25;
-            display: inline;
-        }
-            
-        &__char {
-            display: inline;
-            animation: fadeIn .5s forwards;
-            animation-delay: calc(30ms * var(--index));
-            opacity: 0;
-        }
+			transition: letter-spacing .5s;
 
-		@keyframes fadeIn {
-			from {
-				opacity: 0;
-			}
-			to {
-				opacity: 1;
+			&:hover {
+				background-color: transparent;
+				letter-spacing: 1px;
 			}
 		}
-    }
-}
+	}
 
-.menu {
-    position: absolute;
-    top: calc(50% - 2em);
-    left: 50%;
-    transform: translate(-50%, -50%);
+	&__message {
+		line-height: 1.25;
+		display: inline;
+		width: 50%;
+		text-align: center;
 
-    display: grid;
-    gap: .5em;
-    width: min(600px, calc(100vw - 2em));
+		&__char {
+			display: inline;
+			animation: opacityIn .5s forwards;
+			animation-delay: calc(30ms * var(--index));
+			opacity: 0;
+		}
+	}
 
-    &__item {
-        background-image: linear-gradient(to right, hsla(0, 0%, 0%, 0) 0%, hsla(0, 0%, 0%, 0.8) 25%, hsl(0, 0%, 0%, 0.8) 75%, hsla(0, 0%, 0%, 0) 100%);
-        cursor: pointer;
-        text-align: center;
-        padding: .5em;
-        user-select: none;
-
-        opacity: 0;
-        animation: fadeIn .5s forwards;
-        animation-delay: calc(.2s * var(--index));
-
-        transition: letter-spacing .5s;
-
-        &:hover {
-            //background-color: grey;
-            letter-spacing: 1px;
-        }
-    }
+	&__actor {
+		position: absolute;
+		font-size: 22px;
+		bottom: calc(200px - 2em);
+		animation: opacityIn .3s ease;
+		background-image: linear-gradient(to right, hsla(0, 0%, 0%, 0) 0%, hsla(0, 0%, 100%, 0.2) 25%, hsl(0, 0%, 100%, 0.2) 75%, hsla(0, 0%, 0%, 0) 100%);
+		padding: .25em 2em;
+		min-width: 200px;
+		text-align: center;
+	}
 }
 
 @keyframes floating-text {
@@ -1171,6 +1399,24 @@ const runScript = async (name: string) => {
 	}
 }
 
+@keyframes floating-text-wiggle {
+	0% {
+		translate: calc(-50% + 0px) 0;
+	}
+	25% {
+		translate: calc(-50% + -10px) 0;
+	}
+	50% {
+		translate: calc(-50% + 0px) 0;
+	}
+	75% {
+		translate: calc(-50% + 10px) 0;
+	}
+	100% {
+		translate: calc(-50% + 0px) 0;
+	}
+}
+
 .floating-text-list {
 	position: absolute;
 	inset: 0;
@@ -1179,7 +1425,7 @@ const runScript = async (name: string) => {
 	.floating-text {
 		position: absolute;
 		z-index: 1000;
-		translate: -50% 0;
+		//translate: -50% 0;
 		font-size: 20px;
 		text-shadow:
 			-1px -1px 1px #000,
@@ -1199,7 +1445,7 @@ const runScript = async (name: string) => {
 			font-size: 22px;
 		}
 
-		animation: floating-text 1s linear forwards;
+		animation: floating-text 1s linear forwards, floating-text-wiggle 3s linear infinite;
 	}
 }
 

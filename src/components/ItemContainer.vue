@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { ContainerContext, isEquipment, ItemType, statNames, type Container, type Item, type ItemStats } from '../types/Item';
 import type { Player } from '../types/CombatEntity';
-import { percentageValue } from '../utils';
+import { percentageValue, playSound } from '../utils';
 import { SELL_RATIO } from '../globals';
 
 
@@ -60,6 +60,7 @@ const buyItem = (item: Item) => {
     if (props.player.gold >= item.value) {
         if (props.player.inventory.add(item)) {
             props.player.gold -= item.value;
+            playSound('buy');
         }
     }
 }
@@ -67,12 +68,14 @@ const buyItem = (item: Item) => {
 const sellItem = (item: Item) => {
     props.container.remove(item);
     props.player.gold += percentageValue(item.value * (item.count || 1), SELL_RATIO);
+    playSound('sell');
 }
 
 const sellOneItem = (item: Item) => {
     if (item.count && item.count > 1 && item.isStackable) {
         item.count -= 1;
         props.player.gold += percentageValue(item.value, SELL_RATIO);
+        playSound('sell');
     }
 }
 
@@ -94,20 +97,21 @@ const takeItem = (item: Item) => {
             <img :src="`./item/${item.icon}`" @contextmenu.prevent="selectedItem = item.uuid || null" @dblclick="doubleClick(item)">
             <div class="item__count" v-if="item.isStackable">{{ item.count }}</div>
             <div class="item__menu" v-if="item.uuid === selectedItem">
-                <div class="item__menu__action" v-if="item.type === ItemType.Consumable && context === ContainerContext.Inventory">Use</div>
-                <div class="item__menu__action" v-if="isEquipment(item) && context === ContainerContext.Inventory"
+                <div class="item__menu__action btn" v-if="item.type === ItemType.Consumable && context === ContainerContext.Inventory">Use</div>
+                <div class="item__menu__action btn" v-if="isEquipment(item) && context === ContainerContext.Inventory"
                     @click="equipItem(item)">Equip</div>
-                <div class="item__menu__action" v-if="context === ContainerContext.Equipment" @click="unequipItem(item)">Unequip</div>
-                <div class="item__menu__action" v-if="context === ContainerContext.Loot" @click="takeItem(item)">Take</div>
-                <div class="item__menu__action" v-if="[ContainerContext.Inventory, ContainerContext.Equipment].includes(context) && !shopContainer" @click="destroyItem(item)">Destroy</div>
-                <div class="item__menu__action" v-if="context === ContainerContext.Shop" @click="buyItem(item)">Buy</div>
-                <div class="item__menu__action" v-if="shopContainer && context !== ContainerContext.Shop" @click="sellItem(item)">Sell {{ item.isStackable && (item.count || 0) > 1 ? 'All' : '' }}</div>
-                <div class="item__menu__action" v-if="shopContainer && context !== ContainerContext.Shop && item.isStackable && (item.count || 0) > 1" @click="sellOneItem(item)">Sell 1</div>
+                <div class="item__menu__action btn" v-if="context === ContainerContext.Equipment" @click="unequipItem(item)">Unequip</div>
+                <div class="item__menu__action btn" v-if="context === ContainerContext.Loot" @click="takeItem(item)">Take</div>
+                <div class="item__menu__action btn" v-if="[ContainerContext.Inventory, ContainerContext.Equipment].includes(context) && !shopContainer" @click="destroyItem(item)">Destroy</div>
+                <div class="item__menu__action btn" v-if="context === ContainerContext.Shop" @click="buyItem(item)">Buy</div>
+                <div class="item__menu__action btn" v-if="shopContainer && context !== ContainerContext.Shop" @click="sellItem(item)">Sell {{ item.isStackable && (item.count || 0) > 1 ? 'All' : '' }}</div>
+                <div class="item__menu__action btn" v-if="shopContainer && context !== ContainerContext.Shop && item.isStackable && (item.count || 0) > 1" @click="sellOneItem(item)">Sell 1</div>
             </div>
             <div class="item__tooltip tooltip" v-if="item.uuid !== selectedItem">
                 <div class="item__tooltip__header tooltip__header">
                     <div class="item__tooltip__name tooltip__name">{{ item.name }}</div>
                 </div>
+                <div class="item__tooltip__type tooltip__type">{{ item.type[0].toUpperCase() + item.type.slice(1) }}</div>
                 <div class="item__tooltip__description" v-if="item.description">{{ item.description }}</div>
                 <div class="item__tooltip__stat-list" v-if="item.stats" >
                     <div class="item__tooltip__stat" v-for="stat in Object.entries(item.stats)"><span class="value">{{ stat[1] >= 0 ? '+' : '-' }} {{ stat[1] }}</span> {{ statNames[stat[0]] }}</div>
@@ -129,7 +133,7 @@ const takeItem = (item: Item) => {
     align-content: start;
     gap: .5em;
 
-    &.equipment {
+    &.equipment, &.quest_reward {
         .item__tooltip {
             left: unset;
             right: 0;

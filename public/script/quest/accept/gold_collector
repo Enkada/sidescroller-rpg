@@ -1,0 +1,22 @@
+name "Merchant Guild Representative"
+say "Welcome to the Merchant Guild, adventurer! We're always looking for enterprising individuals who understand the value of gold."
+say "We have a simple task for those who wish to prove their worth in our guild."
+quest_showcase "gold_collector"
+menu [
+    { "label": "accept", "title": "I'm interested in helping the Merchant Guild" },
+    { "label": "decline", "title": "I'll pass for now" }
+]
+
+label accept
+quest "gold_collector"
+name "Merchant Guild Representative"
+say "Excellent choice! We need someone to demonstrate their ability to gather wealth through their adventures."
+say "Collect 20 gold pieces from your adventures - whether through defeating enemies or discovering treasures."
+say "Once you've gathered enough gold, return to me and I'll reward you handsomely."
+exit
+
+label decline
+quest_showcase_hide
+name "Merchant Guild Representative"
+say "Very well. If you change your mind, we'll be here. The Merchant Guild always has opportunities for those who understand the value of gold."
+exit
