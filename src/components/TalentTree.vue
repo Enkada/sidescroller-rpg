@@ -4,6 +4,7 @@ import { getTalentById, TALENT_TREE, TalentType, type Talent } from '../types/Ta
 import type { Player } from '../types/CombatEntity';
 import { getById } from '../utils';
 import { ABILITIES, type Ability } from '../types/Ability';
+import { EFFECTS } from '../types/Effect';
 
 const props = defineProps<{ player: Player }>();
 
@@ -170,10 +171,30 @@ const getTalentData = (talent: Talent) => {
     if (talent.type === TalentType.Ability) {
         const ability = getById(ABILITIES, talent.id) as Ability;
 
-        const description = ability.description.replace(/%(.+?)%/g, (match, key) => `<span class='value'>
-                ${ability.values && ability.values[key] && ability.values[key](props.player.combat) ||
-                ability.constants && ability.constants[key] || match}
-                </span>`)
+        const description = ability.description.replace(/%(.+?)%/g, (match: string, key: string) => {
+            // Handle effect-based formatting
+            if (key.startsWith('effect:')) {
+                const [_, effectId, type, valueKey] = key.split(':');
+                const effect = EFFECTS.find(e => e.id === effectId);
+                if (!effect) return match;
+
+                if (type === 'val' && effect.values && effect.values[valueKey]) {
+                    const value = effect.values[valueKey](props.player.combat, props.player.combat);
+                    return `<span class='value'>${valueKey === 'critChance' ? (value * 100) + '%' : value}</span>`;
+                }
+                if (type === 'const' && effect.constants && effect.constants[valueKey]) {
+                    const value = effect.constants[valueKey];
+                    return `<span class='value'>${valueKey === 'critChance' ? (value * 100) + '%' : value}</span>`;
+                }
+                return match;
+            }
+
+            // Handle regular ability values and constants
+            const value = (ability.values && ability.values[key] && ability.values[key](props.player.combat)) ||
+                         (ability.constants && ability.constants[key]) || 
+                         match;
+            return `<span class='value'>${key === 'critChance' ? (value * 100) + '%' : value}</span>`;
+        });
 
         return {
             name: ability.name,
@@ -202,7 +223,7 @@ const resetTalentPoints = () => {
     <div class="talent-tree window">
         <div class="window__header">
             <div class="window__name">Talent Tree</div>
-            <div class="window__close btn" @click="$emit('close')">Close</div>
+            <div class="window__close btn" @click="$emit('close')">×</div>
         </div>
         <div class="talent-tree__content window__content">
             <div class="talent-tree__wrapper" :style="{ transform: `translate(${translateX}px, ${translateY}px)` }">
@@ -360,19 +381,9 @@ const resetTalentPoints = () => {
         position: relative;
 
         rotate: var(--rotate);
-        text-rendering: optimizeSpeed;
-        shape-rendering: optimizeSpeed;
+        // text-rendering: optimizeSpeed;
+        // shape-rendering: optimizeSpeed;
         z-index: 1;
-
-        // &::before {
-        //     content: '';
-        //     position: absolute;
-        //     width: 100%;
-        //     height: 100%;
-        //     z-index: -1;
-        //     background-color: red;           
-        //     filter: drop-shadow(0 0 32px var(--clr-attribute));
-        // }
 
         &.passive {
             border-radius: 50%;
@@ -450,7 +461,7 @@ const resetTalentPoints = () => {
         img {
             width: 100%;
             height: 100%;
-            image-rendering: optimizeQuality;
+            image-rendering: auto;
         }
     }
 }

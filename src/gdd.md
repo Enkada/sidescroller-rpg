@@ -1,8 +1,5 @@
 # TODO
-Consumable Items
 Meaningful talents
-Dialgue Scripts
-Sounds
 
 Focus - Ultimates: Unlocked at Level 5, requires full "Focus" meter (earned via taking damage).
 Turn order determined by Agility.
@@ -75,15 +72,15 @@ Player has an inventory with 16 slots. Items can obtains from enemy loot or from
 Each item can provide bonus to one of the Stats.
 
 The player has the following equipment slots:
-* Set of armor
 * Amulet/Necklace
-* Ring
+* Ring x 2
+* Relic x 2
 * Weapon
 
 The item can be one of the following category:
-* Armor
 * Amulet/Necklace
 * Ring
+* Relic
 * Weapon
 * Quest
 * Junk

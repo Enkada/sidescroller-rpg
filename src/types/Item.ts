@@ -7,10 +7,11 @@ export enum ItemType {
     Armor = 'armor',
     Amulet = 'amulet',
     Ring = 'ring',
+    Relic = 'relic',
     Weapon = 'weapon',
 }
 
-export const isEquipment = (item: Item) => [ItemType.Armor, ItemType.Amulet, ItemType.Ring, ItemType.Weapon].includes(item.type);
+export const isEquipment = (item: Item) => [ItemType.Amulet, ItemType.Ring, ItemType.Weapon, ItemType.Relic].includes(item.type);
 
 export enum ItemRarity {
     Junk = 'junk',
@@ -54,10 +55,14 @@ export type Item = {
     rarity: ItemRarity
     isStackable?: boolean
     value: number
+    constants?: Record<string, number>
     // level
     uuid?: string
     count?: number
     stats?: ItemStats
+    // Consumable
+    // isCombatOnly?: boolean
+    // endsTurn?: boolean
 }
 
 export type LootChance = {
@@ -72,9 +77,9 @@ export type LootTable = LootChance[]
 export const GLOBAL_LOOT_TABLE: LootTable = [
     { item: "health_potion", chance: 0.1, level: 1 },
     { item: "mana_potion", chance: 0.1, level: 1 },
-    { item: "simple_axe", chance: 0.1, level: 1 },
-    { item: "simple_armor", chance: 0.1, level: 1 },
+    { item: "axe", chance: 0.1, level: 1 },
     { item: "amulet_of_life", chance: 0.1, level: 2 },
+    { item: "kitchen_knife", chance: 0.1, level: 1 },
 ]
 
 export const generateLoot = (lootTable: LootTable, level: number = 1): Item[] => {
@@ -144,6 +149,14 @@ export class Container {
         return false;
     }
 
+    public consume(item: Item): boolean {
+        if (item.isStackable && item.count && item.count > 1) {
+            item.count--;
+            return true;
+        }
+        return this.remove(item);
+    }
+
     public remove(item: Item): boolean {
         const index = this.items.findIndex(x => x.uuid === item.uuid);
         if (index !== -1) {
@@ -169,7 +182,8 @@ export type Equipment = {
     weapon: Container,
     armor: Container,
     ring: Container,
-    amulet: Container
+    amulet: Container,
+    relic: Container
 }
 
 export const ITEMS: Item[] = [
@@ -177,9 +191,12 @@ export const ITEMS: Item[] = [
         id: "health_potion",
         icon: "3259.jpg",
         name: "Health Potion",
-        description: "Restores 10 health",
+        description: "Restores %health% health",
         isStackable: true,
         type: ItemType.Consumable,
+        constants: {
+            health: 10
+        },
         rarity: ItemRarity.Common,
         value: 10
     },
@@ -188,8 +205,11 @@ export const ITEMS: Item[] = [
         icon: "3280.jpg",
         name: "Mana Potion",
         isStackable: true,
-        description: "Restores 10 mana",
+        description: "Restores %mana% mana",
         type: ItemType.Consumable,
+        constants: {
+            mana: 10
+        },
         rarity: ItemRarity.Common,
         value: 10
     },
@@ -201,6 +221,47 @@ export const ITEMS: Item[] = [
         type: ItemType.Currency,
         rarity: ItemRarity.Legendary,
         value: 1
+    },
+    // Player default armor
+    {
+        id: "boots",
+        icon: "296.jpg",
+        name: "Boots",
+        type: ItemType.Armor,
+        rarity: ItemRarity.Common,
+        value: 0
+    },
+    {
+        id: "shoulder_pads",
+        icon: "3589.jpg",
+        name: "Shoulder Pads",
+        type: ItemType.Armor,
+        rarity: ItemRarity.Common,
+        value: 0
+    },
+    {
+        id: "chestplate",
+        icon: "541.jpg",
+        name: "Chestplate",
+        type: ItemType.Armor,
+        rarity: ItemRarity.Common,
+        value: 0
+    },
+    {
+        id: "gloves",
+        icon: "782.jpg",
+        name: "Gloves",
+        type: ItemType.Armor,
+        rarity: ItemRarity.Common,
+        value: 0
+    },
+    {
+        id: "pants",
+        icon: "3102.jpg",
+        name: "Pants",
+        type: ItemType.Armor,
+        rarity: ItemRarity.Common,
+        value: 0
     },
     {
         id: "bone",
@@ -219,17 +280,6 @@ export const ITEMS: Item[] = [
         rarity: ItemRarity.Uncommon,
         stats: {
             attackDamage: 20
-        },
-        value: 10
-    },
-    {
-        id: "simple_armor",
-        icon: "398.jpg",
-        name: "Simple Armor",
-        type: ItemType.Armor,
-        rarity: ItemRarity.Common,
-        stats: {
-            health: 50
         },
         value: 10
     },
@@ -259,13 +309,69 @@ export const ITEMS: Item[] = [
         value: 10
     },
     {
-        id: "simple_axe",
-        icon: "62.jpg",
-        name: "Simple Axe",
+        id: "axe",
+        icon: "54.jpg",
+        name: "Axe",
         type: ItemType.Weapon,
         rarity: ItemRarity.Common,
         stats: {
             attackDamage: 20
+        },
+        value: 10
+    },
+    {
+        id: "kitchen_knife",
+        icon: "4289.jpg",
+        name: "Kitchen Knife",
+        type: ItemType.Weapon,
+        rarity: ItemRarity.Common,
+        stats: {
+            attackDamage: 5,
+            critChance: 0.05
+        },
+        value: 10
+    },
+    {
+        id: "bug_meat",
+        icon: "2680.jpg",
+        name: "Bug Meat",
+        type: ItemType.Junk,
+        rarity: ItemRarity.Junk,
+        isStackable: true,
+        value: 10
+    },   
+    {
+        id: "book_of_knowledge",
+        icon: "1965.jpg",
+        name: "Book of Knowledge",
+        type: ItemType.Relic,
+        rarity: ItemRarity.Common,
+        stats: {
+            intelligence: 5
+        },
+        value: 10
+    },
+    {
+        id: "golden_ring",
+        icon: "1496.jpg",
+        name: "Golden Ring",
+        type: ItemType.Ring,
+        rarity: ItemRarity.Common,
+        stats: {
+            strength: 1,
+            agility: 1,
+            intelligence: 1
+        },
+        value: 10
+    },
+    {
+        id: "runic_stone",
+        icon: "2790.jpg",
+        name: "Runic Stone",
+        type: ItemType.Relic,
+        rarity: ItemRarity.Common,
+        stats: {
+            strength: 3,
         },
         value: 10
     }

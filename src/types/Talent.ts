@@ -57,7 +57,7 @@ export const TALENT_TREE: TalentTree = {
     ],
     agility: [
         {
-            id: "stun",
+            id: "precise_strike",
             type: TalentType.Ability,
             children: ["agi-2", "agi-3"]
         },

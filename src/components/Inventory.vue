@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import type { Player } from '../types/CombatEntity';
-import { Container, ContainerContext } from '../types/Item';
+import type { CombatEntity, Player } from '../types/CombatEntity';
+import { Container, ContainerContext, type Item } from '../types/Item';
 import ItemContainer from './ItemContainer.vue';
 
-const props = defineProps<{ player: Player, shopContainer?: Container }>();
+const props = defineProps<{ player: Player, shopContainer?: Container, enemy?: CombatEntity }>();
+
+const emit = defineEmits<{
+    (e: 'close'): void
+    (e: 'useItem', item: Item): void
+}>();
 
 </script>
 
@@ -11,10 +16,10 @@ const props = defineProps<{ player: Player, shopContainer?: Container }>();
     <div class="inventory window">
         <div class="window__header">
             <div class="window__name">Inventory {{ player.inventory.length }} / {{ player.inventory.size }}</div>
-            <div class="window__close btn" @click="$emit('close')">Close</div>
+            <div class="window__close btn" @click="$emit('close')">×</div>
         </div>
         <div class="inventory__content window__content">
-            <ItemContainer :container="player.inventory" :context="ContainerContext.Inventory" :player="player" :shopContainer="shopContainer"/>
+            <ItemContainer :container="player.inventory" :context="ContainerContext.Inventory" :player="player" :shopContainer="shopContainer" :enemy="enemy" @useItem="(item) => emit('useItem', item)"/>
             <div class="inventory__gold gold">{{ player.gold }} 🪙</div>
         </div>
     </div>

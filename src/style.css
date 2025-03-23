@@ -121,6 +121,28 @@ button:hover {
 .window__name {
   padding: 0.5em 1em;
 }
+.window__tab {
+  display: grid;
+  gap: 1em;
+}
+.window__tab-list {
+  display: flex;
+  margin: -1em -1em 0 -1em;
+}
+.window__tab-list__item {
+  flex: 1;
+  padding: 0.5em;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  text-align: center;
+}
+.window__tab-list__item:not(.active) {
+  border-bottom: 1px solid gray;
+  background-color: hsla(0, 0%, 0%, 0.5);
+}
+.window__tab-list__item:not(:last-child) {
+  border-right: 1px solid gray;
+}
 .window__close {
   cursor: pointer;
   padding: 0.5em 1em;

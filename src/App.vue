@@ -2,16 +2,16 @@
 import { ref, onMounted, onBeforeUnmount, watch, reactive } from 'vue';
 import { ABILITIES, AbilityFlag, type Ability } from './types/Ability';
 import { SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_WIDTH, SCREEN_SWITCH_THRESHOLD, PLAYER_SPEED, COMBAT_RANGE, ANIMATION_SPEED, INTERACTION_RANGE, FOOTSTEP_COOLDOWN } from './globals';
-import { CombatEntity, critCheck, type Player } from './types/CombatEntity';
+import { CombatEntity, type Player } from './types/CombatEntity';
 import EntityFrame from './components/EntityFrame.vue';
 import AbilityButton from './components/AbilityButton.vue';
 import { createSprite, SPRITES, type Sprite, type SpriteSet } from './types/Sprite';
 import { getById, getXP, hasFlag, Window, playSound, SETTINGS } from './utils';
-import { EffectFlag, EFFECTS } from './types/Effect';
+import { EffectFlag, EFFECTS, entityEffect, type Effect } from './types/Effect';
 import { getTalentById, TalentType } from './types/Talent';
 import TalentTree from './components/TalentTree.vue';
 import PlayerInfo from './components/PlayerInfo.vue';
-import { Container, ContainerContext, createItem, generateLoot, GLOBAL_LOOT_TABLE, ITEMS, type Item, type LootTable } from './types/Item';
+import { Container, ContainerContext, createItem, generateLoot, GLOBAL_LOOT_TABLE, ITEMS, ItemType, type Item, type LootTable } from './types/Item';
 import Inventory from './components/Inventory.vue';
 import Shop from './components/Shop.vue';
 import ItemContainer from './components/ItemContainer.vue';
@@ -20,6 +20,10 @@ import { QUESTS, type Quest } from './types/Quest';
 import QuestLog from './components/QuestLog.vue';
 import QuestShowcase from './components/QuestShowcase.vue';
 import Settings from './components/Settings.vue';
+import ToolBar from './components/ToolBar.vue';
+import FloatingTextList from './components/FloatingTextList.vue';
+import { script, scriptIndex, scriptActor, scriptMessage, scriptMenu, parseArguments, getScriptLines, type ScriptMenuItem, type DialogueOption, DialogueType } from './types/Script';
+import Dialogue from './components/Dialogue.vue';
 let lastFootstepTime = 0;
 
 const windows = ref<Window[]>([]);
@@ -134,30 +138,6 @@ enum InteractionType {
 	Dialogue
 }
 
-enum DialogueType {
-	Shop,
-	Talk,
-	QuestAccept,
-	QuestComplete
-}
-
-type DialogueOption = {
-	type: DialogueType
-
-	// DialogueType.Shop
-	shop?: Container
-
-	// DialogueType.Talk
-	text?: string
-
-	// DialogueType.Talk, DialogueType.QuestAccept, DialogueType.QuestComplete
-	script?: string
-	isUnique?: boolean
-
-	// DialogueType.QuestAccept, DialogueType.QuestComplete
-	quest?: Quest
-}
-
 type ScreenObject = {
 	uuid: string
 	name: string
@@ -230,7 +210,7 @@ const SCREENS: Screen[] = [ // TODO: change to a Record
 		setScreenObjectDialogue(
 				createScreenObject(
 					"Girl",
-					createSprite("./entity/girl.png", 512, 512, 40), 460,
+					createSprite("./entity/girl.png", 512, 512, 40, 84), 460,
 					600, 40
 				),
 				[
@@ -271,8 +251,7 @@ const SCREENS: Screen[] = [ // TODO: change to a Record
 					{
 						type: DialogueType.Shop,
 						shop: Container.create(8, [
-							createItem("simple_axe"),
-							createItem("simple_armor"),
+							createItem("axe"),
 							createItem("health_potion"),
 							createItem("ring_of_hell"),
 						])
@@ -316,23 +295,24 @@ const player = ref<Player>({
 	},
 	inventory: Container.create(16),
 	points: {
-		attributesAvailable: 3,
+		attributesAvailable: 0,
 		attributesAllocated: {
 			strength: 0,
 			agility: 0,
 			intelligence: 0
 		},
-		talent: 3
+		talent: 1
 	},
 	sprite: {
-		run: createSprite("./entity/player/run.png", 512, 512, 16),
+		run: createSprite("./entity/sara/run.png", 512, 512, 24, 36),
+		idleUnarmed: createSprite("./entity/sara/idle_ooc.png", 512, 512, 24),
 	},
 	combat: CombatEntity.create(
 		"player", 
 		"Sara", 
 		1, 
 		{ intelligence: 10, strength: 10, agility: 10 }, 
-		"player", 
+		"sara", 
 		{ id: "attack", volume: .8, variations: 4 }),
 	flip: false
 })
@@ -351,7 +331,7 @@ const processStartOfTurn = (combatEntity: CombatEntity) => {
 	}
 
 	// Reset used abilities
-	combatEntity.usedAbilities = [];
+	combatEntity.usedActions = [];
 
 	const skipTurn = combatEntity.effects.some((effect) => {
 		return hasFlag(getById(EFFECTS, effect.id).flags, EffectFlag.SkipTurn);
@@ -364,14 +344,22 @@ const processEndOfTurn = (currentTurn: CombatTurn) => {
 	const combatEntity = currentTurn === CombatTurn.Player ? player.value.combat : combat.enemy;
 	if (!combatEntity) return;
 
-	// Process effects
+	// Process effects 
 	for (const entityEffect of combatEntity.effects) {
 		const effect = getById(EFFECTS, entityEffect.id);
 
-		if (effect.id === "regeneration") {
-			const heal = getById(ABILITIES, "healing_touch").values?.heal(combatEntity);
-			combatEntity.heal(heal);
-		}
+		processAction(ActionType.Effect, effect, entityEffect.caster, combatEntity);
+	}
+
+	// Check if enemy died from effects
+	if (currentTurn === CombatTurn.Enemy && combat.enemy && combat.enemy.health <= 0) {
+		combat.sprite.enemy.id = "death";
+		combat.sprite.enemy.start = performance.now();
+
+		setTimeout(() => {
+			processEndOfCombat();
+		}, combat.enemy.sprite.death.animationSpeed * combat.enemy.sprite.death.frameCount);
+		return;
 	}
 
 	// Reduce effect durations
@@ -476,25 +464,116 @@ watch(() => player.value.xp, (newXp) => {
 	}
 })
 
-const castAbility = (ability: Ability, caster: CombatEntity, target: CombatEntity) => {
-	const processAbility = () => {
+const enum ActionType {
+	Ability,
+	Effect,
+	Item
+}
+
+const useItem = (item: Item) => {
+	processAction(ActionType.Item, item, player.value.combat, combat.enemy || player.value.combat);
+	player.value.inventory.consume(item);
+}
+
+const processAction = (type: ActionType, action: Ability | Effect | Item, caster: CombatEntity, target: CombatEntity) => {
+	let damageCaster = 0;
+	let damageTarget = 0;
+	let healCaster = 0;
+	let healTarget = 0;
+	let manaCaster = 0;
+	let manaTarget = 0;
+	let critChance = 0;
+	let effectsCaster: { id: string, duration: number, caster: CombatEntity }[] = [];
+	let effectsTarget: { id: string, duration: number, caster: CombatEntity }[] = [];
+
+	if (type === ActionType.Ability) {
+		const ability = action as Ability;
 		switch (ability.id) {
 			case "attack":
 			case "heavy_attack":
 			case "morbid_strike":
-				target.health -= critCheck(ability.values?.damage(caster), caster);
+				damageTarget = ability.values?.damage(caster);
+				break;
+			case "precise_strike":
+				damageTarget = ability.values?.damage(caster);
+				critChance = ability.constants?.critChance || 0;
 				break;
 			case "heal":
-				const heal = ability.values?.heal(caster);
-				caster.heal(heal);
+				healCaster = ability.values?.heal(caster);
 				break;
 			case "stun":
-				target.applyEffect(getById(EFFECTS, ability.constants?.effect), ability.constants?.duration);
+				effectsTarget.push({ id: ability.constants?.effect, duration: ability.constants?.duration, caster });
+				break;
+			case "critical_focus":
+				effectsCaster.push({ id: ability.constants?.effect, duration: ability.constants?.duration, caster });
+				break;
+			case "bleeding_strike":
+				effectsTarget.push({ id: ability.constants?.effect, duration: ability.constants?.duration, caster });
 				break;
 			case "healing_touch":
-				caster.applyEffect(getById(EFFECTS, ability.constants?.effect), ability.constants?.duration);
+				effectsCaster.push({ id: ability.constants?.effect, duration: ability.constants?.duration, caster });
 				break;
 		}
+	}
+	else if (type === ActionType.Effect) {
+		const effect = action as Effect;
+
+		switch (effect.id) {
+			case "regeneration":
+				healCaster = effect.values?.heal(caster, target);
+				break;
+			case "bleeding":
+				damageTarget = effect.values?.damage(caster, target);
+				break;
+		}
+	}
+	else if (type === ActionType.Item) {
+		const item = action as Item;
+		switch (item.id) {
+			case "health_potion":
+				healCaster = item.constants?.health || 0;
+				break;
+			case "mana_potion":
+				manaCaster = item.constants?.mana || 0;
+				break;
+		}
+		caster.usedActions.push(item.id);
+	}
+
+	const damage = (caster: CombatEntity, value: number) => {
+		if (value === 0) return 0;
+
+		const totalCritChance = caster.critChance + critChance;
+
+		if (Math.random() <= totalCritChance) {
+			const critValue = Math.ceil(value * caster.critMultiplier);
+			addFloatingText(critValue.toString(), caster, "crit-damage");
+			playSound("crit", 1);
+			return critValue;
+		}
+		addFloatingText(value.toString(), caster, "damage");
+		return value;
+	}
+
+	caster.health -= damage(caster, damageCaster);
+	target.health -= damage(caster, damageTarget);	
+	caster.heal(healCaster);
+	target.heal(healTarget);
+	caster.healMana(manaCaster);
+	target.healMana(manaTarget);
+
+	for (const effect of effectsCaster) {
+		caster.applyEffect(caster, getById(EFFECTS, effect.id), effect.duration);
+	}
+
+	for (const effect of effectsTarget) {
+		target.applyEffect(caster, getById(EFFECTS, effect.id), effect.duration);
+	}
+}
+
+const castAbility = (ability: Ability, caster: CombatEntity, target: CombatEntity) => {
+	const processAbility = () => {
+		processAction(ActionType.Ability, ability, caster, target);
 
 		caster.mana = Math.max(0, caster.mana - ability.cost);
 
@@ -502,7 +581,7 @@ const castAbility = (ability: Ability, caster: CombatEntity, target: CombatEntit
 			caster.cooldowns[ability.id] = ability.cooldown + 1;
 		}
 
-		caster.usedAbilities.push(ability.id);
+		caster.usedActions.push(ability.id);
 
 		const isTargetAlive = target.health > 0;
 
@@ -514,7 +593,7 @@ const castAbility = (ability: Ability, caster: CombatEntity, target: CombatEntit
 			// End of combat
 			setTimeout(() => {
 				processEndOfCombat();
-			}, ANIMATION_SPEED * target.sprite.death.frameCount);
+			}, target.sprite.death.animationSpeed * target.sprite.death.frameCount);
 		}
 
 		return isTargetAlive;
@@ -537,7 +616,7 @@ const castAbility = (ability: Ability, caster: CombatEntity, target: CombatEntit
 		setTimeout(() => {
 			combat.sprite[casterType].id = "idle";
 			combat.sprite[casterType].start = performance.now();
-		}, ANIMATION_SPEED * caster.sprite.attack.frameCount);
+		}, caster.sprite.attack.animationSpeed * caster.sprite.attack.frameCount);
 
 		// Animation for the target being hit
 		setTimeout(() => {
@@ -559,8 +638,8 @@ const castAbility = (ability: Ability, caster: CombatEntity, target: CombatEntit
 						processEndOfTurn(casterType === "player" ? CombatTurn.Player : CombatTurn.Enemy);
 					}, 300);
 				}
-			}, ANIMATION_SPEED * target.sprite.hit.frameCount);
-		}, ANIMATION_SPEED * (caster.sprite.attack.frameCount - 8));
+			}, target.sprite.hit.animationSpeed * target.sprite.hit.frameCount);
+		}, caster.sprite.attack.animationSpeed * (caster.sprite.attack.frameCount - 8));
 	}
 	else {
 		const isTargetAlive = processAbility();
@@ -634,7 +713,7 @@ const onKeyUp = (e: KeyboardEvent) => {
 			toggleWindow(Window.Settings);
 			break;
 		case 'g':
-			player.value.inventory.add(createItem(ITEMS.map(x => x.id)[Math.floor(Math.random() * ITEMS.map(x => x.id).length)]));
+			player.value.inventory.add(createItem(ITEMS.filter(x => x.type !== ItemType.Armor).map(x => x.id)[Math.floor(Math.random() * ITEMS.filter(x => x.type !== ItemType.Armor).map(x => x.id).length)]));
 			break;
 	}
 };
@@ -645,7 +724,6 @@ const drawEntitySprite = (
 	x: number,
 	y: number,
 	width: number,
-	animationSpeed: number,
 	flip: boolean = false,
 	initialTick: number = 0,
 	isFinite: boolean = false,
@@ -659,8 +737,8 @@ const drawEntitySprite = (
 	const tick = performance.now();
 	const currentFrame =
 		isFinite
-			? Math.min(Math.floor((tick - initialTick) / animationSpeed), sprite.frameCount - 1)
-			: Math.floor((tick - initialTick) / animationSpeed) % sprite.frameCount;
+			? Math.min(Math.floor((tick - initialTick) / sprite.animationSpeed), sprite.frameCount - 1)
+			: Math.floor((tick - initialTick) / sprite.animationSpeed) % sprite.frameCount;
 	const height = width * sprite.height / sprite.width;
 
 	// Translate and flip if necessary
@@ -824,7 +902,7 @@ function gameLoop() {
 			combat.sprite.player.start = 0;
 			combat.sprite.enemy.id = "idle";
 			combat.sprite.enemy.start = 0;
-			player.value.combat.usedAbilities = [];
+			player.value.combat.usedActions = [];
 			player.value.combat.cooldowns = {};
 
 			playSound("combat_start", 1);
@@ -840,7 +918,6 @@ function gameLoop() {
 				entity.x,
 				entity.y,
 				entity.width,
-				ANIMATION_SPEED,
 				false,
 				0,
 				false,
@@ -853,7 +930,6 @@ function gameLoop() {
 				screenEnemy.value.position === "left" ? 300 : SCREEN_WIDTH - 300,
 				SPRITES[screenEnemy.value.combat.spriteId].y,
 				PLAYER_WIDTH,
-				ANIMATION_SPEED,
 				screenEnemy.value.position === "right"
 			);
 		}
@@ -872,13 +948,12 @@ function gameLoop() {
 			lastFootstepTime = 0;
 		}
 
-		const currentPlayerSprite = isMoving ? player.value.sprite.run : player.value.combat.sprite.idle;
+		const currentPlayerSprite = isMoving ? player.value.sprite.run : player.value.sprite.idleUnarmed;
 		drawEntitySprite(
 			currentPlayerSprite,
 			player.value.x,
 			SPRITES[player.value.combat.spriteId].y,
 			PLAYER_WIDTH,
-			ANIMATION_SPEED,
 			player.value.flip
 		);
 	}
@@ -889,7 +964,6 @@ function gameLoop() {
 			SCREEN_WIDTH * 2 / 5,
 			SPRITES[player.value.combat.spriteId].y,
 			PLAYER_WIDTH,
-			ANIMATION_SPEED,
 			false,
 			combat.sprite.player.start,
 			combat.sprite.player.id === "death"
@@ -902,7 +976,6 @@ function gameLoop() {
 				SCREEN_WIDTH * 3 / 5,
 				SPRITES[combat.enemy.spriteId].y,
 				PLAYER_WIDTH,
-				ANIMATION_SPEED,
 				true,
 				combat.sprite.enemy.start,
 				combat.sprite.enemy.id === "death"
@@ -1051,38 +1124,12 @@ const takeAllLoot = () => {
 	endCombat();
 }
 
-// Script Start
-interface ScriptMenuItem {
-	label: string;
-	title: string;
-}
-
 const incrementVariable = (type: string, name: string) => {
 	player.value.variables[`${type}:${name}`] = (player.value.variables[`${type}:${name}`] || 0) + 1;
 }
 
-const script = ref('');
-const scriptIndex = ref(-1);
-const scriptActor = ref('');
-const scriptMessage = ref('');
-const scriptMenu = ref<ScriptMenuItem[]>([]);
-
-function parseArguments(str: string) {
-	const regex = /[^\s"]+|"([^"]*)"/gi;
-	const args = [];
-	let match;
-
-	do {
-		match = regex.exec(str);
-		if (match != null) {
-			args.push(match[1] ? match[1] : match[0]);
-		}
-	} while (match !== null);
-
-	return args;
-}
-
-const scriptNextLine = () => {
+// Script Start
+function scriptNextLine() {
 	if (scriptMenu.value.length !== 0) return;
 
 	let nextIndex = scriptIndex.value + 1;
@@ -1166,28 +1213,7 @@ const scriptNextLine = () => {
 	scriptIndex.value = nextIndex;
 }
 
-const handleMenuItemClick = (item: ScriptMenuItem) => {
-	scriptMenu.value = [];
-	scriptIndex.value = getScriptLines().findIndex(line => line.includes(`label ${item.label}`));
-}
-
-const getScriptLines = () => {
-	function wrapSpreadedJSON(script: string) {
-		const spreadedJSONRegex = /menu\s*\[\s*([\s\S]+?)\s*\]/g;
-		return script.replace(spreadedJSONRegex, (_: string, json: string) => {
-			const wrappedJSON = json.replace(/\n\s*/g, '');
-			return `menu "[${wrappedJSON.replace(/'/g, '&apos;').replace(/\"/g, "'").replace(/\r/g, '')}]"`;
-		});
-	}
-
-	return wrapSpreadedJSON(script.value)
-		.replace(/\/\/.*/g, '')
-		.replace(/\n\s*\n/g, '\n')
-		.split('\n');
-}
-
 watch(scriptIndex, () => {
-	console.log(scriptIndex.value);
 	if (scriptIndex.value === -1) {
 		scriptNextLine();
 		return;
@@ -1218,7 +1244,7 @@ const runScript = async (name: string) => {
 	<div class="game" :style="{ backgroundImage: `url('/bg/${currentScreen.background}')` }">
 		<canvas ref="canvasRef" class="canvas" :width="SCREEN_WIDTH" :height="SCREEN_HEIGHT"></canvas>
 		<div class="ui">
-			<div class="build-info">Sidescroller RPG v0 | @enkada | 16.03.2025</div>
+			<div class="build-info">Sidescroller RPG v0 | @enkada | 23.03.2025</div>
 			<EntityFrame :entity="player.combat" :player="player"
 				:showXPBar="!combat.isInProgress || postCombat.isOpen" />
 			<EntityFrame v-if="combat.enemy" :entity="combat.enemy" :isEnemy="true" />
@@ -1241,30 +1267,17 @@ const runScript = async (name: string) => {
 			</div>
 			<TalentTree v-if="isWindowOpen(Window.TalentTree)" :player="player" @close="closeWindow(Window.TalentTree)" />
 			<Inventory v-if="isWindowOpen(Window.Inventory)" :player="player" @close="closeWindow(Window.Inventory)"
-				:shopContainer="shopContainer" />
+				:shopContainer="shopContainer" :enemy="combat.enemy || undefined" @useItem="useItem" />
 			<Shop v-if="shopContainer" :player="player" :shopContainer="shopContainer" @close="closeShop" />
 			<PlayerInfo v-if="isWindowOpen(Window.Character)" :player="player" @close="closeWindow(Window.Character)"
 				:combat="combat" :applyAttributeAllocation="applyAttributeAllocation" />
 			<QuestLog v-if="isWindowOpen(Window.Quest)" :player="player" @close="closeWindow(Window.Quest)" />
 			<QuestShowcase v-if="questShowcaseId" :questId="questShowcaseId" :player="player" />
 			<Settings v-if="isWindowOpen(Window.Settings)" @close="closeWindow(Window.Settings)" />
-			<div class="floating-text-list">
-				<div v-for="text in floatingText" :class="`floating-text ${text.type}`"
-					:style="{ left: `${text.x}px`, top: `${text.y}px` }">{{ text.text }}</div>
-			</div>
-			<div class="tool-bar">
-				<div class="tool-bar__button btn" :class="{ 'active': isWindowOpen(Window.Character) }"
-					@click="toggleWindow(Window.Character)">⚔️</div>
-				<div class="tool-bar__button btn" :class="{ 'active': isWindowOpen(Window.TalentTree) }"
-					@click="toggleWindow(Window.TalentTree)">🌳</div>
-				<div class="tool-bar__button btn" :class="{ 'active': isWindowOpen(Window.Inventory) }"
-					@click="toggleWindow(Window.Inventory)">💼</div>
-				<div class="tool-bar__button btn" :class="{ 'active': isWindowOpen(Window.Quest) }"
-					@click="toggleWindow(Window.Quest)">📜</div>
-				<div class="tool-bar__button btn" :class="{ 'active': isWindowOpen(Window.Settings) }"
-					@click="toggleWindow(Window.Settings)">⚙️</div>
-			</div>
+			<FloatingTextList :texts="floatingText" />
+			<ToolBar :windows="windows" @toggleWindow="toggleWindow" />
 
+			<!-- Interaction with Screen Objects -->
 			<div class="dialogue__menu" v-if="dialogueMenu.length">
 				<button v-for="(option, i) in dialogueMenu" class="dialogue__menu__item" :style="{ '--index': i }"
 					@click="selectDialogueOption(option)">
@@ -1273,23 +1286,10 @@ const runScript = async (name: string) => {
 				<button @click="dialogueMenu = []" class="dialogue__menu__item" :style="{ '--index': dialogueMenu.length }" >Return</button>
 			</div>
 
-			<div v-if="script !== ''" class="dialogue">
-				<div class="dialogue__panel" @click="scriptNextLine">
-					<div class="dialogue__actor" :key="scriptActor">{{ scriptActor }}</div>
-					<div class="dialogue__message" :key="scriptMessage">
-						<div v-for="(char, i) in scriptMessage.split('')" :key="i" class="dialogue__message__char"
-							:style="{ '--index': i }">
-							{{ char }}
-						</div>
-					</div>
-				</div>
-				<div class="dialogue__menu" v-if="scriptMenu.length">
-					<button v-for="(item, i) in scriptMenu" :key="i" class="dialogue__menu__item" :style="{ '--index': i }" @click="handleMenuItemClick(item)" >
-						{{ item.title.replace(/\&apos\;/g, "'") }}
-					</button>
-				</div>
-			</div>
-			<!-- <pre> {{ JSON.stringify(player.variables, null, 2) }}</pre> -->
+			<Dialogue 
+				v-if="script !== ''" 
+				:onNextLine="scriptNextLine" 
+			/>
 		</div>
 	</div>
 </template>
@@ -1303,150 +1303,6 @@ const runScript = async (name: string) => {
 	background-size: cover;
 	position: relative;
 	scale: 1;
-}
-
-.dialogue {
-	position: absolute;
-	display: grid;
-	place-items: center;
-	inset: 0;
-	pointer-events: none;
-	
-    animation: opacityIn 1s ease;
-
-	&__panel {
-		position: absolute;
-		pointer-events: auto;
-		cursor: pointer;
-		bottom: 0;
-		background-color: hsla(0, 0%, 0%, 0.7);
-		backdrop-filter: blur(2px);
-		padding: 1em;
-		display: grid;
-		place-items: center;
-		width: 100%;
-		height: 200px;
-	}
-
-	&__menu {
-		position: absolute;
-		pointer-events: auto;
-		gap: .5em;
-		display: grid;
-		left: 50%;
-		top: 50%;
-		transform: translate(-50%, -50%);
-
-		width: 600px;
-
-		&__item {
-			opacity: 0;
-			animation: opacityIn .5s forwards;
-			animation-delay: calc(.2s * var(--index));
-
-			background-color: transparent;
-			background-image: linear-gradient(to right, hsla(0, 0%, 0%, 0) 0%, hsla(0, 0%, 0%, 0.8) 25%, hsl(0, 0%, 0%, 0.8) 75%, hsla(0, 0%, 0%, 0) 100%);
-			border: none;
-
-			transition: letter-spacing .5s;
-
-			&:hover {
-				background-color: transparent;
-				letter-spacing: 1px;
-			}
-		}
-	}
-
-	&__message {
-		line-height: 1.25;
-		display: inline;
-		width: 50%;
-		text-align: center;
-
-		&__char {
-			display: inline;
-			animation: opacityIn .5s forwards;
-			animation-delay: calc(30ms * var(--index));
-			opacity: 0;
-		}
-	}
-
-	&__actor {
-		position: absolute;
-		font-size: 22px;
-		bottom: calc(200px - 2em);
-		animation: opacityIn .3s ease;
-		background-image: linear-gradient(to right, hsla(0, 0%, 0%, 0) 0%, hsla(0, 0%, 100%, 0.2) 25%, hsl(0, 0%, 100%, 0.2) 75%, hsla(0, 0%, 0%, 0) 100%);
-		padding: .25em 2em;
-		min-width: 200px;
-		text-align: center;
-	}
-}
-
-@keyframes floating-text {
-	0% {
-		transform: translateY(0);
-		opacity: 1;
-	}
-
-	50% {
-		opacity: 1;
-	}
-
-	100% {
-		opacity: 0;
-		transform: translateY(-100px);
-	}
-}
-
-@keyframes floating-text-wiggle {
-	0% {
-		translate: calc(-50% + 0px) 0;
-	}
-	25% {
-		translate: calc(-50% + -10px) 0;
-	}
-	50% {
-		translate: calc(-50% + 0px) 0;
-	}
-	75% {
-		translate: calc(-50% + 10px) 0;
-	}
-	100% {
-		translate: calc(-50% + 0px) 0;
-	}
-}
-
-.floating-text-list {
-	position: absolute;
-	inset: 0;
-	pointer-events: none;
-
-	.floating-text {
-		position: absolute;
-		z-index: 1000;
-		//translate: -50% 0;
-		font-size: 20px;
-		text-shadow:
-			-1px -1px 1px #000,
-			1px -1px 1px #000,
-			-1px 1px 1px #000,
-			1px 1px 1px #000;
-
-		&.crit-damage,
-		&.debuff {
-			color: red;
-			font-size: 22px;
-		}
-
-		&.heal,
-		&.buff {
-			color: lime;
-			font-size: 22px;
-		}
-
-		animation: floating-text 1s linear forwards, floating-text-wiggle 3s linear infinite;
-	}
 }
 
 .dialogue-menu {
@@ -1471,27 +1327,6 @@ const runScript = async (name: string) => {
 		font-size: 12px;
 		text-shadow: 1px 1px 1px black;
 		opacity: .5;
-	}
-}
-
-.tool-bar {
-	position: absolute;
-	right: calc(2rem + 1px);
-	bottom: 0em;
-	display: flex;
-	gap: 1px;
-	cursor: pointer;
-	font-size: 1.25em;
-
-	&__button {
-		padding: .15em;
-		text-shadow: 1px 1px 1px black;
-		margin-right: -0px;
-
-		&.active {
-			outline: 1px solid gray;
-			background-color: hsla(0, 0%, 0%, 0.5);
-		}
 	}
 }
 

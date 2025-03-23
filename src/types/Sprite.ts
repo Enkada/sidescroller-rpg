@@ -1,3 +1,4 @@
+import { ANIMATION_SPEED } from "../globals";
 import { SETTINGS } from "../utils";
 
 export type SpriteSet = {
@@ -12,6 +13,7 @@ export type Sprite = {
 	width: number	// Frame width
 	height: number	// Frame height
 	frameCount: number
+	animationSpeed: number
 	bounds: {
 		y: number // Y offset
 		height: number
@@ -69,7 +71,7 @@ export const calculateSpriteBounds = (image: HTMLImageElement) => {
     };
 };
 
-export const createSprite = (src: string, width: number, height: number, frameCount: number): Sprite => {
+export const createSprite = (src: string, width: number, height: number, frameCount: number, animationSpeed: number = ANIMATION_SPEED): Sprite => {
     const image = new Image();
     image.src = src;
     
@@ -84,6 +86,7 @@ export const createSprite = (src: string, width: number, height: number, frameCo
         width,
         height,
         frameCount,
+        animationSpeed,
         bounds: {
             y: 0,
             height: height
@@ -123,9 +126,16 @@ export const SPRITES: Record<string, {
 	},
 	player: {
 		idle: createSprite("./entity/player/idle.png", 512, 512, 24),
-		attack: createSprite("./entity/player/attack.png", 512, 512, 16),
+		attack: createSprite("./entity/player/attack.png", 512, 512, 25),
 		hit: createSprite("./entity/player/hit.png", 512, 512, 12),
 		death: createSprite("./entity/fly/death.png", 512, 512, 36),
+		y: -105
+	},
+	sara: {
+		idle: createSprite("./entity/sara/idle.png", 512, 512, 24, 76),
+		attack: createSprite("./entity/sara/attack.png", 512, 512, 24, 86),
+		hit: createSprite("./entity/sara/hit.png", 512, 512, 17, 76),
+		death: createSprite("./entity/sara/death.png", 512, 512, 24, 76),
 		y: -105
 	}
 };

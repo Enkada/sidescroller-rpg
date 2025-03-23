@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { CombatEntity, type Player } from '../types/CombatEntity';
-import { EFFECTS, EffectType } from '../types/Effect';
+import { EFFECTS, EffectType, type Effect } from '../types/Effect';
 import XPBar from './XPBar.vue';
 import { getById } from '../utils';
 
@@ -11,6 +11,22 @@ const player = props.player as Player;
 
 const healthPercentage = computed(() => Math.max(0, props.entity.health / props.entity.maxHealth) * 100);
 const manaPercentage = computed(() => Math.max(0, props.entity.mana / props.entity.maxMana) * 100);
+
+const formatDescription = (effect: { id: string, duration: number, caster: CombatEntity }, target: CombatEntity) => {
+	
+	const effectData = getById(EFFECTS, effect.id);
+	return effectData.description.replace(/%(.+?)%/g, (match: string, key: string) => {
+		if (effectData.values && effectData.values[key]) {
+			const value = effectData.values[key](effect.caster, target);
+			return `<span class='value'>${key === 'critChance' ? (value * 100) + '%' : value}</span>`;
+		}
+		if (effectData.constants && effectData.constants[key]) {
+			const value = effectData.constants[key];
+			return `<span class='value'>${key === 'critChance' ? (value * 100) + '%' : value}</span>`;
+		}
+		return match;
+	});
+};
 </script>
 
 <template>
@@ -44,7 +60,7 @@ const manaPercentage = computed(() => Math.max(0, props.entity.mana / props.enti
 						<div class="effect__tooltip__header tooltip__header">
 							<div class="effect__tooltip__name tooltip__name">{{ getById(EFFECTS, effect.id).name }}</div>
 						</div>
-						<div class="effect__tooltip__description">{{ getById(EFFECTS, effect.id).description }}</div>
+						<div class="effect__tooltip__description" v-html="formatDescription(effect, props.entity)"></div>
 					</div>
 				</div>
 			</div>

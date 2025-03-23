@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { CRIT_CHANCE_PER_AGI, CRIT_MULT_PER_AGI, DMG_PER_AGI, DMG_PER_STR, HEALTH_PER_STR, MANA_PER_INT, MANA_REGEN_PER_INT } from '../globals';
 import type { Attributes, Player } from '../types/CombatEntity';
 import { ContainerContext } from '../types/Item';
 import ItemContainer from './ItemContainer.vue';
 import TextToolTip from './TextToolTip.vue';
 
+const activeTab = ref('equipment');
 
 const props = defineProps<{ player: Player, combat: { isInProgress: boolean }, applyAttributeAllocation: () => void }>();
 
@@ -35,69 +37,102 @@ const cancelAttributeAllocation = () => {
     <div class="player-info window">
         <div class="window__header">
             <div class="window__name">Character</div>
-            <div class="window__close btn" @click="$emit('close')">Close</div>
+            <div class="window__close btn" @click="$emit('close')">×</div>
         </div>
         <div class="player-info__content window__content">
-            <div class="player-info__equipment">
-                <ItemContainer :container="player.combat.equipment.weapon" :context="ContainerContext.Equipment" :player="player"/>
-                <ItemContainer :container="player.combat.equipment.armor" :context="ContainerContext.Equipment" :player="player"/>
-                <ItemContainer :container="player.combat.equipment.amulet" :context="ContainerContext.Equipment" :player="player"/>
-                <ItemContainer :container="player.combat.equipment.ring" :context="ContainerContext.Equipment" :player="player"/>
+            <div class="window__tab-list">
+                <div class="window__tab-list__item" :class="{ active: activeTab === 'equipment' }"
+                    @click="activeTab = 'equipment'">Equipment</div>
+                <div class="window__tab-list__item" :class="{ active: activeTab === 'stats' }"
+                    @click="activeTab = 'stats'">Stats</div>
             </div>
-            <div class="player-info__attribute-list">
-                <div class="player-info__attribute-value">{{ player.combat.strength }}</div>
-                <div class="player-info__attribute-name"><TextToolTip text="Strength">Provides <span class="value">{{ DMG_PER_STR }}</span> attack damage and <span class="value">{{ HEALTH_PER_STR }}</span> health per point</TextToolTip></div>
-                <div class="button-list">
-                    <button class="button-add" v-if="player.points.attributesAvailable > 0 && !combat.isInProgress"
-                        @click="allocateAttributePoint('strength', 1)">+</button>
-                    <button class="button-cancel"
-                        v-if="player.points.attributesAllocated.strength > 0 && !combat.isInProgress"
-                        @click="allocateAttributePoint('strength', -1)">-</button>
+            <div class="window__tab" v-if="activeTab === 'equipment'">
+                <div class="player-info__title">{{ player.combat.name }}, lvl {{ player.combat.level }}</div>
+                <div class="player-info__equipment">
+                    <ItemContainer :container="player.combat.equipment.armor" :context="ContainerContext.Equipment"
+                        :player="player" />
+                    <ItemContainer :container="player.combat.equipment.weapon" :context="ContainerContext.Equipment"
+                        :player="player" />
+                    <div class="col">
+                        <ItemContainer :container="player.combat.equipment.ring" :context="ContainerContext.Equipment"
+                            :player="player" />
+                        <ItemContainer :container="player.combat.equipment.amulet" :context="ContainerContext.Equipment"
+                            :player="player" />
+                        <ItemContainer :container="player.combat.equipment.relic" :context="ContainerContext.Equipment"
+                            :player="player" />
+                    </div>
                 </div>
-                <div class="player-info__attribute-value">{{ player.combat.agility }}</div>
-                <div class="player-info__attribute-name"><TextToolTip text="Agility">Provides <span class="value">{{ CRIT_CHANCE_PER_AGI * 100 }}%</span> critical hit chance, <span class="value">{{ CRIT_MULT_PER_AGI * 100 }}%</span> critical hit multiplier per point and <span class="value">1</span> attack damage per {{ 1 / DMG_PER_AGI }} points</TextToolTip></div>
-                <div class="button-list">
-                    <button class="button-add" v-if="player.points.attributesAvailable > 0 && !combat.isInProgress"
-                        @click="allocateAttributePoint('agility', 1)">+</button>
-                    <button class="button-cancel"
-                        v-if="player.points.attributesAllocated.agility > 0 && !combat.isInProgress"
-                        @click="allocateAttributePoint('agility', -1)">-</button>
+                <div class="player-info__attribute-list">
+                    <div class="player-info__attribute-value">{{ player.combat.strength }}</div>
+                    <div class="player-info__attribute-name">
+                        <TextToolTip text="Strength">Provides <span class="value">{{ DMG_PER_STR }}</span> attack damage
+                            and <span class="value">{{ HEALTH_PER_STR }}</span> health per point</TextToolTip>
+                    </div>
+                    <div class="button-list">
+                        <button class="button-add" v-if="player.points.attributesAvailable > 0 && !combat.isInProgress"
+                            @click="allocateAttributePoint('strength', 1)">+</button>
+                        <button class="button-cancel"
+                            v-if="player.points.attributesAllocated.strength > 0 && !combat.isInProgress"
+                            @click="allocateAttributePoint('strength', -1)">-</button>
+                    </div>
+                    <div class="player-info__attribute-value">{{ player.combat.agility }}</div>
+                    <div class="player-info__attribute-name">
+                        <TextToolTip text="Agility">Provides <span class="value">{{ CRIT_CHANCE_PER_AGI * 100 }}%</span>
+                            critical hit chance, <span class="value">{{ CRIT_MULT_PER_AGI * 100 }}%</span> critical hit
+                            multiplier per point and <span class="value">1</span> attack damage per {{ 1 / DMG_PER_AGI
+                            }} points</TextToolTip>
+                    </div>
+                    <div class="button-list">
+                        <button class="button-add" v-if="player.points.attributesAvailable > 0 && !combat.isInProgress"
+                            @click="allocateAttributePoint('agility', 1)">+</button>
+                        <button class="button-cancel"
+                            v-if="player.points.attributesAllocated.agility > 0 && !combat.isInProgress"
+                            @click="allocateAttributePoint('agility', -1)">-</button>
+                    </div>
+                    <div class="player-info__attribute-value">{{ player.combat.intelligence }}</div>
+                    <div class="player-info__attribute-name">
+                        <TextToolTip text="Intelligence">Provides <span class="value">{{ MANA_PER_INT }}</span> mana and
+                            <span class="value">{{ MANA_REGEN_PER_INT }}</span> mana regeneration per point
+                        </TextToolTip>
+                    </div>
+                    <div class="button-list">
+                        <button class="button-add" v-if="player.points.attributesAvailable > 0 && !combat.isInProgress"
+                            @click="allocateAttributePoint('intelligence', 1)">+</button>
+                        <button class="button-cancel"
+                            v-if="player.points.attributesAllocated.intelligence > 0 && !combat.isInProgress"
+                            @click="allocateAttributePoint('intelligence', -1)">-</button>
+                    </div>
                 </div>
-                <div class="player-info__attribute-value">{{ player.combat.intelligence }}</div>
-                <div class="player-info__attribute-name"><TextToolTip text="Intelligence">Provides <span class="value">{{ MANA_PER_INT }}</span> mana and <span class="value">{{ MANA_REGEN_PER_INT }}</span> mana regeneration per point</TextToolTip></div>
-                <div class="button-list">
-                    <button class="button-add" v-if="player.points.attributesAvailable > 0 && !combat.isInProgress"
-                        @click="allocateAttributePoint('intelligence', 1)">+</button>
-                    <button class="button-cancel"
-                        v-if="player.points.attributesAllocated.intelligence > 0 && !combat.isInProgress"
-                        @click="allocateAttributePoint('intelligence', -1)">-</button>
+                <div class="player-info__attribute-allocation"
+                    v-if="player.points.attributesAvailable > 0 || Object.values(player.points.attributesAllocated).some(value => value > 0)">
+                    <div class="player-info__attribute-allocation__text">{{ player.points.attributesAvailable }}
+                        point{{
+                            player.points.attributesAvailable === 1 ? "" : "s" }} available</div>
+                    <div class="button-list"
+                        v-if="Object.values(player.points.attributesAllocated).some(value => value > 0) && !combat.isInProgress">
+                        <button @click="applyAttributeAllocation">Apply</button>
+                        <button @click="cancelAttributeAllocation">Cancel</button>
+                    </div>
                 </div>
             </div>
-            <div class="player-info__attribute-allocation"
-                v-if="player.points.attributesAvailable > 0 || Object.values(player.points.attributesAllocated).some(value => value > 0)">
-                <div class="player-info__attribute-allocation__text">{{ player.points.attributesAvailable }}
-                    point{{
-                        player.points.attributesAvailable === 1 ? "" : "s" }} available</div>
-                <div class="button-list"
-                    v-if="Object.values(player.points.attributesAllocated).some(value => value > 0) && !combat.isInProgress">
-                    <button @click="applyAttributeAllocation">Apply</button>
-                    <button @click="cancelAttributeAllocation">Cancel</button>
+            <div class="window__tab" v-else-if="activeTab === 'stats'">
+                <div class="player-info__stat-list">
+                    <div class="player-info__stat-name">Health</div>
+                    <div class="player-info__stat-value">{{ player.combat.health }} / {{ player.combat.maxHealth }}
+                    </div>
+                    <div class="player-info__stat-name">Mana</div>
+                    <div class="player-info__stat-value">{{ player.combat.mana }} / {{ player.combat.maxMana }}</div>
+                    <div class="player-info__stat-name">Mana Regeneration</div>
+                    <div class="player-info__stat-value">{{ player.combat.manaRegen }}</div>
+                    <div class="player-info__stat-name">Attack Damage</div>
+                    <div class="player-info__stat-value">{{ player.combat.attackDamage }}</div>
+                    <div class="player-info__stat-name">Critical Chance</div>
+                    <div class="player-info__stat-value">{{ Math.round(player.combat.critChance * 100 * 10) / 10 }}%
+                    </div>
+                    <div class="player-info__stat-name">Critical Multiplier</div>
+                    <div class="player-info__stat-value">{{ Math.round(player.combat.critMultiplier * 100 * 10) / 10 }}%
+                    </div>
                 </div>
-            </div>
-            <div class="player-info__stat-list">
-                <div class="player-info__stat-name">Health</div>
-                <div class="player-info__stat-value">{{ player.combat.health }} / {{ player.combat.maxHealth }}</div>
-                <div class="player-info__stat-name">Mana</div>
-                <div class="player-info__stat-value">{{ player.combat.mana }} / {{ player.combat.maxMana }}</div>
-                <div class="player-info__stat-name">Mana Regeneration</div>
-                <div class="player-info__stat-value">{{ player.combat.manaRegen }}</div>
-                <div class="player-info__stat-name">Attack Damage</div>
-                <div class="player-info__stat-value">{{ player.combat.attackDamage }}</div>
-                <div class="player-info__stat-name">Critical Chance</div>
-                <div class="player-info__stat-value">{{ Math.round(player.combat.critChance * 100 * 10) / 10 }}%</div>
-                <div class="player-info__stat-name">Critical Multiplier</div>
-                <div class="player-info__stat-value">{{ Math.round(player.combat.critMultiplier * 100 * 10) / 10 }}%</div>
-
             </div>
         </div>
     </div>
@@ -109,11 +144,27 @@ const cancelAttributeAllocation = () => {
     top: 2em;
     bottom: 2em;
     left: 2em;
-    width: fit-content;
+    width: 326px;
+
+    &__title {
+        font-size: 22px;
+        text-align: center;
+    }
 
     &__equipment {
         display: flex;
         gap: .5em;
+        justify-content: space-between;
+        align-items: flex-end;
+
+        background-image: url('./player_equipment.png');
+        background-size: 512px;
+        background-position: 45% 50%;
+
+        .col {
+            display: grid;
+            gap: .5em;
+        }
 
         .item-container {
             grid-template-columns: 1fr;

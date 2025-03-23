@@ -125,6 +125,33 @@ button {
 		padding: .5em 1em;
 	}
 
+    &__tab {        
+		display: grid;
+		gap: 1em;   
+    }
+
+	&__tab-list {
+		display: flex;	
+        margin: -1em -1em 0 -1em;
+
+		&__item {
+            flex: 1;
+			padding: .5em;
+			border-bottom: 2px solid transparent;
+			cursor: pointer;
+            text-align: center;
+            
+            &:not(.active) {
+                border-bottom: 1px solid gray;
+                background-color: hsla(0, 0%, 0%, 0.5);
+            }
+
+            &:not(:last-child) {
+                border-right: 1px solid gray;
+            }
+		}
+	}
+
 	&__close {
 		cursor: pointer;
 		padding: .5em 1em;

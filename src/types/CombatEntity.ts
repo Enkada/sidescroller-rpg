@@ -1,8 +1,8 @@
 import { CRIT_CHANCE_PER_AGI, CRIT_MULT_INITIAL, CRIT_MULT_PER_AGI, DMG_PER_AGI, DMG_PER_STR, HEALTH_PER_STR, MANA_PER_INT, MANA_REGEN_PER_INT } from "../globals";
 import { hasFlag } from "../utils";
-import { EffectFlag, EffectType, type Effect } from "./Effect";
+import { EffectFlag, EffectType, entityEffect, type Effect } from "./Effect";
 import { addFloatingText } from "./FloatingText";
-import { Container, type Equipment, type ItemStats } from "./Item";
+import { Container, createItem, type Equipment, type ItemStats } from "./Item";
 import { SPRITES, type Sprite, type SpriteSet } from "./Sprite";
 
 export type Attributes = {
@@ -25,19 +25,10 @@ export type Player = {
 	}
 	sprite: {
 		run: Sprite
+		idleUnarmed: Sprite
 	}
 	combat: CombatEntity
 	flip: boolean // determines orientation: true for left, false for right
-}
-
-export const critCheck = (value: number, combat: CombatEntity) => {
-	if (Math.random() <= combat.critChance) {
-		const critValue = Math.ceil(value * combat.critMultiplier);
-		addFloatingText(critValue.toString(), combat, "crit-damage");
-		return critValue;
-	}
-	addFloatingText(value.toString(), combat, "damage");
-	return value;
 }
 
 export class CombatEntity {
@@ -45,12 +36,13 @@ export class CombatEntity {
 	public mana: number;
 	public cooldowns: Record<string, number>; // Ability ID -> Cooldown
 	public talents: Record<string, number>; // Talent ID -> Level
-	public usedAbilities: string[];
+	public usedActions: string[];
 	public equipment: Equipment;
 	public sprite: SpriteSet;
 	public effects: { 
 		id: string,
-		duration: number
+		duration: number,
+		caster: CombatEntity
 	}[];
 
 	// Made constructor private to enforce factory pattern
@@ -67,12 +59,19 @@ export class CombatEntity {
 		this.mana = this.maxMana;
 		this.cooldowns = {};
 		this.talents = {};
-		this.usedAbilities = [];
+		this.usedActions = [];
 		this.equipment = { 
 			weapon: Container.create(1), 
-			armor: Container.create(1), 
-			ring: Container.create(1), 
-			amulet: Container.create(1) 
+			armor: Container.create(5, [
+				createItem("shoulder_pads"),
+				createItem("chestplate"),
+				createItem("gloves"),
+				createItem("pants"),
+				createItem("boots")
+			]), 
+			ring: Container.create(2), 
+			amulet: Container.create(1),
+			relic: Container.create(2)
 		};
 		this.effects = [];		
 		this.sprite = CombatEntity.getSpriteSet(spriteId);
@@ -111,7 +110,8 @@ export class CombatEntity {
 	}
 
 	get critChance(): number {
-		return this.agility * CRIT_CHANCE_PER_AGI + this.totalEquipmentStat("critChance");
+		return this.agility * CRIT_CHANCE_PER_AGI + this.totalEquipmentStat("critChance")
+			+ (entityEffect(this, "critical_chance")?.constants?.critChance || 0);
 	}
 
 	get critMultiplier(): number {
@@ -141,16 +141,25 @@ export class CombatEntity {
 
 	// Heal
 	heal(amount: number): void {
+		if (amount === 0) return;
 		this.health += amount;
 		this.healthFix();
 		addFloatingText(`+${amount}`, this, "heal");
 	}
 
-	applyEffect(effect: Effect, duration: number, stacks: number = 1): void {
+	// Heal mana
+	healMana(amount: number): void {
+		if (amount === 0) return;
+		this.mana += amount;
+		this.manaFix();
+		addFloatingText(`+${amount}`, this, "mana");
+	}
+
+	applyEffect(caster: CombatEntity, effect: Effect, duration: number, stacks: number = 1): void {
 		const existingEffect = this.effects.find(e => e.id === effect.id);
 		if (!existingEffect || hasFlag(effect.flags, EffectFlag.Stackable)) {
 			for (let i = 0; i < stacks; i++) {
-				this.effects.push({ id: effect.id, duration });
+				this.effects.push({ id: effect.id, duration, caster });
 			}
 		} else {
 			existingEffect.duration = duration;

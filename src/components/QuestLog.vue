@@ -57,7 +57,7 @@ watch(sortedQuests, (newQuests) => {
         if (firstUncompleted) {
             selectedQuest.value = firstUncompleted;
         } else {
-            selectedQuest.value = newQuests[0];
+            //selectedQuest.value = newQuests[0];
         }
     }
 }, { immediate: true });
@@ -67,11 +67,11 @@ watch(sortedQuests, (newQuests) => {
     <div class="quest-log window">
         <div class="window__header">
             <div class="window__name">Quest Log</div>
-            <div class="window__close btn" @click="$emit('close')">Close</div>
+            <div class="window__close btn" @click="$emit('close')">×</div>
         </div>
         <div class="quest-log__content window__content">
-            <div v-if="selectedQuest" class="quest-log__quest">
-                <div class="quest-log__quest__title">{{ selectedQuest.title }}</div>
+            <div v-if="selectedQuest" class="quest-log__quest" :class="{ 'completed': player.quests[selectedQuest.id] }">
+                <div class="quest-log__quest__title">{{ player.quests[selectedQuest.id] ? '✓' : '' }} {{ selectedQuest.title }}</div>
                 <div class="quest-log__quest__description">{{ selectedQuest.description }}</div>
                 <div class="quest-log__quest__objective-list">
                     <div v-for="(objective, index) in selectedQuest.objectives" :key="index" class="quest-log__quest__objective" :class="{ 'completed': getQuestProgress(selectedQuest.id, index)?.isCompleted }">
@@ -129,6 +129,24 @@ watch(sortedQuests, (newQuests) => {
         display: grid;
         align-content: start;
         gap: .5em;
+
+        &.completed {
+            & > .quest-log__quest__title {
+                color: lime;
+            }
+
+            .quest-log__quest__objective {
+                color: initial;
+            }
+
+            .quest-log__objective__progress {
+                display: none;
+            }
+
+            .item-container {
+                filter: grayscale(100%);
+            }
+        }
 
         &__reward {
             display: grid;

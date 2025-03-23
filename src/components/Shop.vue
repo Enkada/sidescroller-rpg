@@ -11,7 +11,7 @@ const props = defineProps<{ player: Player, shopContainer: Container }>();
     <div class="shop window">
         <div class="window__header">
             <div class="window__name">Shop </div>
-            <div class="window__close btn" @click="$emit('close')">Close</div>
+            <div class="window__close btn" @click="$emit('close')">×</div>
         </div>
         <div class="shop__content window__content">
             <ItemContainer :container="shopContainer" :context="ContainerContext.Shop" :player="player"/>
