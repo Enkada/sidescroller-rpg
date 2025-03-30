@@ -5,7 +5,8 @@ export enum Window {
 	Inventory,
 	TalentTree,
 	Quest,
-	Settings
+	Settings,
+	EquipmentUpgrade,
 }
 
 // Load settings from localStorage
@@ -24,7 +25,7 @@ watch(SETTINGS, (newSettings) => {
 }, { deep: true });
 
 export const playSound = (sound: string, volume: number = .3, variations?: number) => {
-	const soundFile = variations ? `${sound}_${Math.floor(Math.random() * variations) + 1}` : sound;
+	const soundFile = variations && variations > 1 ? `${sound}_${Math.floor(Math.random() * variations) + 1}` : sound;
 	const audio = new Audio(`./sound/${soundFile}.mp3`);
 	audio.volume = volume * SETTINGS.value.volume * 0.1;
 	audio.play().catch(error => console.log('Error playing sound:', error));

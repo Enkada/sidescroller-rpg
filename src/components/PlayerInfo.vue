@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { CRIT_CHANCE_PER_AGI, CRIT_MULT_PER_AGI, DMG_PER_AGI, DMG_PER_STR, HEALTH_PER_STR, MANA_PER_INT, MANA_REGEN_PER_INT } from '../globals';
+import { ACCURACY_PER_AGI, CRIT_CHANCE_PER_AGI, CRIT_MULT_PER_AGI, DMG_PER_AGI, DMG_PER_STR, EVASION_PER_AGI, HEALTH_PER_STR, MANA_PER_INT, MANA_REGEN_PER_INT } from '../globals';
 import type { Attributes, Player } from '../types/CombatEntity';
 import { ContainerContext } from '../types/Item';
 import ItemContainer from './ItemContainer.vue';
@@ -47,7 +47,7 @@ const cancelAttributeAllocation = () => {
                     @click="activeTab = 'stats'">Stats</div>
             </div>
             <div class="window__tab" v-if="activeTab === 'equipment'">
-                <div class="player-info__title">{{ player.combat.name }}, lvl {{ player.combat.level }}</div>
+                <!-- <div class="player-info__title">{{ player.combat.name }}, lvl {{ player.combat.level }}</div> -->
                 <div class="player-info__equipment">
                     <ItemContainer :container="player.combat.equipment.armor" :context="ContainerContext.Equipment"
                         :player="player" />
@@ -79,8 +79,10 @@ const cancelAttributeAllocation = () => {
                     <div class="player-info__attribute-name">
                         <TextToolTip text="Agility">Provides <span class="value">{{ CRIT_CHANCE_PER_AGI * 100 }}%</span>
                             critical hit chance, <span class="value">{{ CRIT_MULT_PER_AGI * 100 }}%</span> critical hit
-                            multiplier per point and <span class="value">1</span> attack damage per {{ 1 / DMG_PER_AGI
-                            }} points</TextToolTip>
+                            multiplier, <span class="value">{{ EVASION_PER_AGI * 100 }}%</span> evasion, and <span
+                                class="value">{{ ACCURACY_PER_AGI * 100 }}%</span> accuracy per point and <span
+                                class="value">1</span> attack damage per <span class="value">{{ 1 / DMG_PER_AGI }}</span>
+                            points</TextToolTip>
                     </div>
                     <div class="button-list">
                         <button class="button-add" v-if="player.points.attributesAvailable > 0 && !combat.isInProgress"
@@ -132,6 +134,18 @@ const cancelAttributeAllocation = () => {
                     <div class="player-info__stat-name">Critical Multiplier</div>
                     <div class="player-info__stat-value">{{ Math.round(player.combat.critMultiplier * 100 * 10) / 10 }}%
                     </div>
+                    <div class="player-info__stat-name">Evasion</div>
+                    <div class="player-info__stat-value">{{ Math.round(player.combat.evasion * 100 * 10) / 10 }}%
+                    </div>
+                    <div class="player-info__stat-name">Accuracy</div>
+                    <div class="player-info__stat-value">{{ Math.round(player.combat.accuracy * 100 * 10) / 10 }}%
+                    </div>
+                    <div class="player-info__stat-name">Magic Resistance</div>
+                    <div class="player-info__stat-value">{{ player.combat.magicResistance }}%
+                    </div>
+                    <div class="player-info__stat-name">Physical Resistance</div>
+                    <div class="player-info__stat-value">{{ player.combat.physicalResistance }}%
+                    </div>
                 </div>
             </div>
         </div>
@@ -158,8 +172,9 @@ const cancelAttributeAllocation = () => {
         align-items: flex-end;
 
         background-image: url('./player_equipment.png');
-        background-size: 512px;
-        background-position: 45% 50%;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: 50% 50%;
 
         .col {
             display: grid;

@@ -33,6 +33,7 @@ export type Effect = {
     flags?: EffectFlag
     values?: Record<string, (c: CombatEntity, t: CombatEntity) => any>;
     constants?: Record<string, any>;
+    sound?: { id: string, volume: number, variations: number };
 }
 
 export const EFFECTS: Effect[] = [
@@ -62,7 +63,8 @@ export const EFFECTS: Effect[] = [
         description: "Deals %damage% damage at the end of turn",
         values: {
             damage: (c: CombatEntity, t: CombatEntity) => t.strength * 2
-        }
+        },
+        sound: { id: "bleeding", volume: 1, variations: 1 }
     },
     {
         id: "critical_chance",

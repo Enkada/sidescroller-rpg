@@ -17,6 +17,7 @@ export type Ability = {
 	description: string;
     cost: number;
     cooldown?: number; // Turns
+    sound?: { id: string, volume: number, variations: number };
     flags?: AbilityFlag
 }
 
@@ -111,6 +112,7 @@ export const ABILITIES: Ability[] = [
         description: "Focus your mind to increase critical chance by %effect:critical_chance:const:critChance% for %duration% turns",
         cost: 30,
         cooldown: 4,
+        sound: { id: "critical_focus", volume: 1, variations: 1 },
         flags: AbilityFlag.PreserveTurn | AbilityFlag.NoAnimation
     },
     {
@@ -125,5 +127,16 @@ export const ABILITIES: Ability[] = [
         },
         description: "A precise attack that deals %damage% damage with increased critical chance by %critChance%",
         cost: 25
+    },
+    {
+        id: "fireball",
+        icon: "506.jpg",
+        name: "Fireball",
+        values: {
+            damage: (c: CombatEntity) => c.intelligence * 5
+        },
+        description: "Cast a fireball that deals %damage% damage",
+        sound: { id: "fireball", volume: 1, variations: 3 },
+        cost: 20        
     }
 ]

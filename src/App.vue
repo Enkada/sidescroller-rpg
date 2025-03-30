@@ -6,7 +6,7 @@ import { CombatEntity, type Player } from './types/CombatEntity';
 import EntityFrame from './components/EntityFrame.vue';
 import AbilityButton from './components/AbilityButton.vue';
 import { createSprite, SPRITES, type Sprite, type SpriteSet } from './types/Sprite';
-import { getById, getXP, hasFlag, Window, playSound, SETTINGS } from './utils';
+import { getById, getXP, hasFlag, Window, playSound, SETTINGS, percentageValue } from './utils';
 import { EffectFlag, EFFECTS, entityEffect, type Effect } from './types/Effect';
 import { getTalentById, TalentType } from './types/Talent';
 import TalentTree from './components/TalentTree.vue';
@@ -24,6 +24,7 @@ import ToolBar from './components/ToolBar.vue';
 import FloatingTextList from './components/FloatingTextList.vue';
 import { script, scriptIndex, scriptActor, scriptMessage, scriptMenu, parseArguments, getScriptLines, type ScriptMenuItem, type DialogueOption, DialogueType } from './types/Script';
 import Dialogue from './components/Dialogue.vue';
+import EquipmentUpgrade from './components/EquipmentUpgrade.vue';
 let lastFootstepTime = 0;
 
 const windows = ref<Window[]>([]);
@@ -196,6 +197,7 @@ const ENEMIES: Record<string, {
 }
 
 const shopContainer = ref<Container | undefined>(undefined);
+const upgradeConsumable = ref<Item | undefined>(undefined);
 const dialogueMenu = ref<DialogueOption[]>([]);
 const nearestScreenObject = ref<ScreenObject | null>(null);
 
@@ -470,19 +472,33 @@ const enum ActionType {
 	Item
 }
 
+const enum DamageType {
+	Physical,
+	Magic
+}
+
 const useItem = (item: Item) => {
-	processAction(ActionType.Item, item, player.value.combat, combat.enemy || player.value.combat);
-	player.value.inventory.consume(item);
+	if (['chisel', 'gem', 'enchantment'].includes(item.id)) {
+		upgradeConsumable.value = item;
+		openWindow(Window.EquipmentUpgrade);
+	}
+	else {
+		processAction(ActionType.Item, item, player.value.combat, combat.enemy || player.value.combat);
+		player.value.inventory.consume(item);
+	}
 }
 
 const processAction = (type: ActionType, action: Ability | Effect | Item, caster: CombatEntity, target: CombatEntity) => {
-	let damageCaster = 0;
-	let damageTarget = 0;
+	let physicalDamageCaster = 0;
+	let physicalDamageTarget = 0;
+	let magicDamageCaster = 0;
+	let magicDamageTarget = 0;
 	let healCaster = 0;
 	let healTarget = 0;
 	let manaCaster = 0;
 	let manaTarget = 0;
 	let critChance = 0;
+	let isMiss = Math.random() <= (1 - (caster.accuracy - target.evasion));
 	let effectsCaster: { id: string, duration: number, caster: CombatEntity }[] = [];
 	let effectsTarget: { id: string, duration: number, caster: CombatEntity }[] = [];
 
@@ -492,10 +508,13 @@ const processAction = (type: ActionType, action: Ability | Effect | Item, caster
 			case "attack":
 			case "heavy_attack":
 			case "morbid_strike":
-				damageTarget = ability.values?.damage(caster);
+				physicalDamageTarget = ability.values?.damage(caster);
+				break;
+			case "fireball":
+				magicDamageTarget = ability.values?.damage(caster);
 				break;
 			case "precise_strike":
-				damageTarget = ability.values?.damage(caster);
+				physicalDamageTarget = ability.values?.damage(caster);
 				critChance = ability.constants?.critChance || 0;
 				break;
 			case "heal":
@@ -517,13 +536,14 @@ const processAction = (type: ActionType, action: Ability | Effect | Item, caster
 	}
 	else if (type === ActionType.Effect) {
 		const effect = action as Effect;
+		isMiss = false;
 
 		switch (effect.id) {
 			case "regeneration":
 				healCaster = effect.values?.heal(caster, target);
 				break;
 			case "bleeding":
-				damageTarget = effect.values?.damage(caster, target);
+				physicalDamageTarget = effect.values?.damage(caster, target);
 				break;
 		}
 	}
@@ -538,36 +558,84 @@ const processAction = (type: ActionType, action: Ability | Effect | Item, caster
 				break;
 		}
 		caster.usedActions.push(item.id);
+
+		if (item.sound) {
+			playSound(item.sound.id, item.sound.volume, item.sound.variations);
+		}
 	}
 
-	const damage = (caster: CombatEntity, value: number) => {
+	const damage = (value: number, damageType: DamageType) => {
 		if (value === 0) return 0;
 
-		const totalCritChance = caster.critChance + critChance;
+		if (isCrit) {
+			if (isMiss) {
+				value = percentageValue(value, Math.max(0, 1 - (damageType === DamageType.Physical ? caster.physicalResistance : caster.magicResistance)));
+				addFloatingText(value.toString(), caster, "damage");
+				playSound(
+					action.sound?.id || caster.attackSound.id, 
+					action.sound?.volume || caster.attackSound.volume, 
+					action.sound?.variations || caster.attackSound.variations
+				);
+				return value;
+			}
 
-		if (Math.random() <= totalCritChance) {
-			const critValue = Math.ceil(value * caster.critMultiplier);
+			const critValue = percentageValue(Math.ceil(value * caster.critMultiplier), Math.max(0, 1 - (damageType === DamageType.Physical ? caster.physicalResistance : caster.magicResistance)));
 			addFloatingText(critValue.toString(), caster, "crit-damage");
+			playSound(
+				action.sound?.id || caster.attackSound.id, 
+				action.sound?.volume || caster.attackSound.volume, 
+				action.sound?.variations || caster.attackSound.variations
+			);
 			playSound("crit", 1);
 			return critValue;
 		}
+
+		if (isMiss) {
+			addFloatingText("Miss", target, "miss");
+			playSound("miss", .8, 3);
+			return 0;
+		}
+
+		value = percentageValue(value, Math.max(0, 1 - (damageType === DamageType.Physical ? caster.physicalResistance : caster.magicResistance)));
+
 		addFloatingText(value.toString(), caster, "damage");
+		playSound(
+			action.sound?.id || caster.attackSound.id, 
+			action.sound?.volume || caster.attackSound.volume, 
+			action.sound?.variations || caster.attackSound.variations
+		);
 		return value;
 	}
 
-	caster.health -= damage(caster, damageCaster);
-	target.health -= damage(caster, damageTarget);	
+	let isCrit = Math.random() <= (caster.critChance + critChance);
+
+	caster.health -= damage(physicalDamageCaster, DamageType.Physical);
+	target.health -= damage(physicalDamageTarget, DamageType.Physical);	
+	caster.health -= damage(magicDamageCaster, DamageType.Magic);
+	target.health -= damage(magicDamageTarget, DamageType.Magic);
 	caster.heal(healCaster);
 	target.heal(healTarget);
 	caster.healMana(manaCaster);
 	target.healMana(manaTarget);
 
-	for (const effect of effectsCaster) {
+	for (const effect of effectsCaster) {	
 		caster.applyEffect(caster, getById(EFFECTS, effect.id), effect.duration);
+		if (action.sound) {
+			playSound(action.sound.id, action.sound.volume, action.sound.variations);
+		}
 	}
 
-	for (const effect of effectsTarget) {
-		target.applyEffect(caster, getById(EFFECTS, effect.id), effect.duration);
+	if (!isMiss || isCrit) {
+		for (const effect of effectsTarget) {
+			target.applyEffect(caster, getById(EFFECTS, effect.id), effect.duration);
+			if (action.sound) {
+				playSound(action.sound.id, action.sound.volume, action.sound.variations);
+			}
+		}
+	}
+	else if (effectsTarget.length) {
+		addFloatingText("Miss", target, "miss");
+		playSound("miss", .8, 3);
 	}
 }
 
@@ -625,8 +693,6 @@ const castAbility = (ability: Ability, caster: CombatEntity, target: CombatEntit
 
 			const isTargetAlive = processAbility();
 
-			playSound(caster.attackSound.id, caster.attackSound.volume, caster.attackSound.variations);
-
 			if (!isTargetAlive) return;
 
 			setTimeout(() => {
@@ -638,7 +704,7 @@ const castAbility = (ability: Ability, caster: CombatEntity, target: CombatEntit
 						processEndOfTurn(casterType === "player" ? CombatTurn.Player : CombatTurn.Enemy);
 					}, 300);
 				}
-			}, target.sprite.hit.animationSpeed * target.sprite.hit.frameCount);
+			}, target.sprite.hit.animationSpeed * (target.sprite.hit.frameCount - 1));
 		}, caster.sprite.attack.animationSpeed * (caster.sprite.attack.frameCount - 8));
 	}
 	else {
@@ -712,8 +778,17 @@ const onKeyUp = (e: KeyboardEvent) => {
 		case 'o':
 			toggleWindow(Window.Settings);
 			break;
+		case 'u':
+			toggleWindow(Window.EquipmentUpgrade);
+			break;
 		case 'g':
 			player.value.inventory.add(createItem(ITEMS.filter(x => x.type !== ItemType.Armor).map(x => x.id)[Math.floor(Math.random() * ITEMS.filter(x => x.type !== ItemType.Armor).map(x => x.id).length)]));
+			break;
+		case 'h':
+			player.value.inventory.add(createItem("enchantment"));
+			break;
+		case 'j':
+			player.value.inventory.items = [];
 			break;
 	}
 };
@@ -1266,6 +1341,7 @@ const runScript = async (name: string) => {
 				<button @click="endCombat">Continue</button>
 			</div>
 			<TalentTree v-if="isWindowOpen(Window.TalentTree)" :player="player" @close="closeWindow(Window.TalentTree)" />
+			<EquipmentUpgrade v-if="isWindowOpen(Window.EquipmentUpgrade) && upgradeConsumable" :player="player" :consumable="upgradeConsumable" @close="closeWindow(Window.EquipmentUpgrade)" />
 			<Inventory v-if="isWindowOpen(Window.Inventory)" :player="player" @close="closeWindow(Window.Inventory)"
 				:shopContainer="shopContainer" :enemy="combat.enemy || undefined" @useItem="useItem" />
 			<Shop v-if="shopContainer" :player="player" :shopContainer="shopContainer" @close="closeShop" />

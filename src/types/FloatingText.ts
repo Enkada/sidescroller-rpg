@@ -2,7 +2,7 @@ import { ref } from "vue"
 import type { CombatEntity } from "./CombatEntity"
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "../globals"
 
-export type FloatingTextType = "damage" | "heal" | "crit-damage" | "mana" | "buff" | "debuff"
+export type FloatingTextType = "damage" | "heal" | "crit-damage" | "mana" | "buff" | "debuff" | "miss"
 
 export type FloatingText = {
 	text: string

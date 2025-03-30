@@ -3,6 +3,7 @@ export enum ItemType {
     Consumable = 'consumable',
     Quest = 'quest',
     Currency = 'currency',
+    Gem = 'gem',
     // Equipment  
     Armor = 'armor',
     Amulet = 'amulet',
@@ -14,12 +15,21 @@ export enum ItemType {
 export const isEquipment = (item: Item) => [ItemType.Amulet, ItemType.Ring, ItemType.Weapon, ItemType.Relic].includes(item.type);
 
 export enum ItemRarity {
-    Junk = 'junk',
-    Common = 'common',
-    Uncommon = 'uncommon',
-    Rare = 'rare',
-    Epic = 'epic',
-    Legendary = 'legendary'
+    Junk = 0,
+    Common = 1,
+    Uncommon = 2, 
+    Rare = 3,
+    Epic = 4,
+    Legendary = 5
+}
+
+export const rarityNames: Record<ItemRarity, string> = {
+    [ItemRarity.Junk]: 'junk',
+    [ItemRarity.Common]: 'common', 
+    [ItemRarity.Uncommon]: 'uncommon',
+    [ItemRarity.Rare]: 'rare',
+    [ItemRarity.Epic]: 'epic',
+    [ItemRarity.Legendary]: 'legendary'
 }
 
 export type ItemStats = {
@@ -32,6 +42,10 @@ export type ItemStats = {
     critChance?: number
     critMultiplier?: number
     manaRegen?: number
+    evasion?: number
+    accuracy?: number
+    magicResistance?: number
+    physicalResistance?: number
 }
 
 export const statNames: Record<string, string> = {
@@ -43,7 +57,11 @@ export const statNames: Record<string, string> = {
     attackDamage: "Attack Damage",
     critChance: "Crit Chance",
     critMultiplier: "Crit Multiplier",
-    manaRegen: "Mana Regen"
+    manaRegen: "Mana Regen",
+    evasion: "Evasion",
+    accuracy: "Accuracy",
+    magicResistance: "Magic Resistance",
+    physicalResistance: "Physical Resistance"
 }
 
 export type Item = {
@@ -56,10 +74,15 @@ export type Item = {
     isStackable?: boolean
     value: number
     constants?: Record<string, number>
-    // level
+    sound?: { id: string, volume: number, variations: number };
+    level?: number
     uuid?: string
     count?: number
     stats?: ItemStats
+    enchantmentStats?: ItemStats
+    sockets?: {
+        gem: Item | null
+    }[]
     // Consumable
     // isCombatOnly?: boolean
     // endsTurn?: boolean
@@ -111,7 +134,8 @@ export enum ContainerContext {
     Equipment = 'equipment',
     Shop = 'shop',
     Loot = 'loot',
-    QuestReward = 'quest_reward'
+    QuestReward = 'quest_reward',
+    EquipmentUpgrade = 'equipment_upgrade'
 }
 
 export class Container {
@@ -198,7 +222,8 @@ export const ITEMS: Item[] = [
             health: 10
         },
         rarity: ItemRarity.Common,
-        value: 10
+        value: 10,
+        sound: { id: "potion", volume: 1, variations: 1 }
     },
     {
         id: "mana_potion",
@@ -211,7 +236,8 @@ export const ITEMS: Item[] = [
             mana: 10
         },
         rarity: ItemRarity.Common,
-        value: 10
+        value: 10,
+        sound: { id: "potion", volume: 1, variations: 1 }
     },
     {
         id: "gold",
@@ -374,14 +400,93 @@ export const ITEMS: Item[] = [
             strength: 3,
         },
         value: 10
+    },
+    {
+        id: "chisel",
+        icon: "2796.jpg",
+        name: "Chisel",
+        description: "Used to create sockets in armor",
+        type: ItemType.Consumable,
+        rarity: ItemRarity.Rare,
+        value: 100
+    },
+    {
+        id: "gem",
+        icon: "1342.jpg",
+        name: "Gem",
+        description: "Can be inserted into a socket in armor",
+        type: ItemType.Gem,
+        rarity: ItemRarity.Common,
+        value: 0
+    },
+    {
+        id: "enchantment",
+        icon: "2661.jpg",
+        name: "Enchantment",
+        description: "Can be used to enchant armor",
+        type: ItemType.Consumable,
+        rarity: ItemRarity.Common,
+        value: 0
     }
 ]
 
-export const createItem = (id: string, count: number = 1) => {
+export const createRandomEnchantment = (item: Item) => {
+    const rarityIndex = Math.floor(Math.random() * Math.random() * 4);
+    const rarity = [ItemRarity.Common, ItemRarity.Uncommon, ItemRarity.Rare, ItemRarity.Epic][rarityIndex];
+
+    const enchantmentStats: Record<keyof ItemStats, (level: number) => number> = {
+        health: (level) => level * 10 + Math.floor(Math.random() * 10),
+        mana: (level) => level * 10 + Math.floor(Math.random() * 10),
+        strength: (level) => level * 2 + Math.floor(Math.random() * 2),
+        agility: (level) => level * 2 + Math.floor(Math.random() * 2),
+        intelligence: (level) => level * 2 + Math.floor(Math.random() * 2),
+        attackDamage: (level) => level * 5 + Math.floor(Math.random() * 5),
+        critChance: (level) => level * 0.01 + Math.floor(Math.random() * 1) / 100,
+        critMultiplier: (level) => level * 0.02 + Math.floor(Math.random() * 2) / 100,
+        manaRegen: (level) => level * 2 + Math.floor(Math.random() * 2),
+        evasion: (level) => level * 0.01 + Math.floor(Math.random() * 1) / 100,
+        accuracy: (level) => level * 0.01 + Math.floor(Math.random() * 1) / 100,
+        magicResistance: (level) => level * 0.01 + Math.floor(Math.random() * 1) / 100,
+        physicalResistance: (level) => level * 0.01 + Math.floor(Math.random() * 1) / 100,
+    }
+
+    // Add 1 random stat for each rarity level
+    const stats: ItemStats = {};
+
+    for (let i = 0; i <= rarityIndex; i++) {
+        const stat = Object.keys(enchantmentStats)[Math.floor(Math.random() * Object.keys(enchantmentStats).length)];
+
+        if (stats[stat as keyof ItemStats]) {
+            i--;
+            continue;
+        }
+
+        const value = enchantmentStats[stat as keyof ItemStats](item.level ?? 1);
+        stats[stat as keyof ItemStats] = value;
+    }
+
+    return {
+        ...item,
+        rarity: rarity,  
+        stats: stats,
+        icon: {
+            [ItemRarity.Uncommon]: "704.jpg",
+            [ItemRarity.Rare]: "705.jpg",
+            [ItemRarity.Epic]: "703.jpg",
+        }[rarity as ItemRarity.Uncommon | ItemRarity.Rare | ItemRarity.Epic] ?? "2661.jpg",
+    }
+}
+
+export const createItem = (id: string, count: number = 1, level?: number) => {
     const item = { ...ITEMS.find(x => x.id === id) || ITEMS[0] };
 
     item.uuid = crypto.randomUUID();
     item.count = count;
+    item.level = item.level ?? level;
+
+    if (item.id === "enchantment") {
+        return createRandomEnchantment(item);
+    }
 
     return item;
 };

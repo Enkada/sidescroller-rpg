@@ -1,4 +1,4 @@
-import { CRIT_CHANCE_PER_AGI, CRIT_MULT_INITIAL, CRIT_MULT_PER_AGI, DMG_PER_AGI, DMG_PER_STR, HEALTH_PER_STR, MANA_PER_INT, MANA_REGEN_PER_INT } from "../globals";
+import { ACCURACY_INITIAL, ACCURACY_PER_AGI, CRIT_CHANCE_PER_AGI, CRIT_MULT_INITIAL, CRIT_MULT_PER_AGI, DMG_PER_AGI, DMG_PER_STR, EVASION_INITIAL, EVASION_PER_AGI, HEALTH_PER_STR, MAGIC_RESISTANCE_INITIAL, MANA_PER_INT, MANA_REGEN_PER_INT, PHYSICAL_RESISTANCE_INITIAL } from "../globals";
 import { hasFlag } from "../utils";
 import { EffectFlag, EffectType, entityEffect, type Effect } from "./Effect";
 import { addFloatingText } from "./FloatingText";
@@ -80,8 +80,10 @@ export class CombatEntity {
 	totalEquipmentStat(stat: keyof ItemStats): number {
 		if (!this.equipment) return 0;
 		return Object.values(this.equipment).reduce((acc, container) => {
-			const item = container.items[0];
-			return acc + (item && item.stats && item.stats[stat] ? item.stats[stat] : 0);
+			return acc + container.items.reduce((itemAcc, item) => {
+				const statValue = (item?.stats?.[stat] || 0) + (item?.enchantmentStats?.[stat] || 0);
+				return itemAcc + statValue;
+			}, 0);
 		}, 0);
 	}
 
@@ -124,6 +126,22 @@ export class CombatEntity {
 
 	get xp(): number {
 		return this.level * 60;
+	}
+
+	get evasion(): number {
+		return EVASION_INITIAL + this.agility * EVASION_PER_AGI + this.totalEquipmentStat("evasion");
+	}
+
+	get accuracy(): number {
+		return ACCURACY_INITIAL + this.agility * ACCURACY_PER_AGI + this.totalEquipmentStat("accuracy");
+	}
+
+	get magicResistance(): number {
+		return MAGIC_RESISTANCE_INITIAL + this.totalEquipmentStat("magicResistance");
+	}
+
+	get physicalResistance(): number {
+		return PHYSICAL_RESISTANCE_INITIAL + this.totalEquipmentStat("physicalResistance");
 	}
 
 	healthFix(): void {

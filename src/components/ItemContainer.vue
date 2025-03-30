@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ContainerContext, isEquipment, ItemType, statNames, type Container, type Item, type ItemStats } from '../types/Item';
+import { ContainerContext, isEquipment, ItemType, rarityNames, statNames, type Container, type Item, type ItemStats } from '../types/Item';
 import type { CombatEntity, Player } from '../types/CombatEntity';
 import { percentageValue, playSound } from '../utils';
 import { SELL_RATIO } from '../globals';
 
 
-const props = defineProps<{ container: Container, context: ContainerContext, player: Player, shopContainer?: Container, enemy?: CombatEntity }>();
+const props = defineProps<{ container: Container, context: ContainerContext, player: Player, shopContainer?: Container, enemy?: CombatEntity, forceTooltip?: boolean }>();
 
 const emit = defineEmits<{
     (e: 'useItem', item: Item): void
@@ -110,12 +110,17 @@ const takeItem = (item: Item) => {
 
 <template>
     <div class="item-container" :class="context">
-        <div class="item" v-for="item in container.items" :key="item.uuid" :class="[item.rarity, { 'used': player.combat.usedActions.includes(item.id) }]"
+        <div class="item" v-for="item in container.items" :key="item.uuid" :class="[rarityNames[item.rarity], { 'force-tooltip': forceTooltip }, { 'used': player.combat.usedActions.includes(item.id) }]"
             @mouseleave="selectedItem = null">
             <img :src="`./item/${item.icon}`" @contextmenu.prevent="selectedItem = item.uuid || null" @dblclick="doubleClick(item)">
             <div class="item__count" v-if="item.isStackable">{{ item.count }}</div>
             <div class="item__menu" v-if="item.uuid === selectedItem">
-                <div class="item__menu__action btn" v-if="item.type === ItemType.Consumable && context === ContainerContext.Inventory && enemy && !player.combat.usedActions.includes(item.id)" @click="emit('useItem', item); selectedItem = null">Use</div>
+                <div class="item__menu__action btn" v-if="
+                    (item.type === ItemType.Consumable || item.type === ItemType.Gem) && 
+                    context === ContainerContext.Inventory && 
+                    (enemy || ['chisel', 'enchantment', 'gem'].includes(item.id)) && 
+                    !player.combat.usedActions.includes(item.id)" 
+                    @click="emit('useItem', item); selectedItem = null">Use</div>
                 <div class="item__menu__action btn" v-if="isEquipment(item) && context === ContainerContext.Inventory"
                     @click="equipItem(item)">Equip</div>
                 <div class="item__menu__action btn" v-if="item.type !== ItemType.Armor && context === ContainerContext.Equipment" @click="unequipItem(item)">Unequip</div>
@@ -134,12 +139,35 @@ const takeItem = (item: Item) => {
                 <div class="item__tooltip__stat-list" v-if="item.stats" >
                     <div class="item__tooltip__stat" v-for="stat in Object.entries(item.stats)">
                         <span class="value">
-                            {{ stat[0] === 'critChance' 
+                            {{ ['critChance', 'critMultiplier', 'evasion', 'accuracy', 'magicResistance', 'physicalResistance'].includes(stat[0])
                                 ? `${(stat[1] * 100)}%` 
                                 : `${stat[1] >= 0 ? '+' : '-'} ${stat[1]}` 
                             }}
                         </span> 
                         {{ statNames[stat[0]] }}
+                    </div>
+                </div>
+                <div class="item__tooltip__stat-title" v-if="item.enchantmentStats">Enchantments</div>
+                <div class="item__tooltip__stat-list" v-if="item.enchantmentStats" >
+                    <div class="item__tooltip__stat" v-for="stat in Object.entries(item.enchantmentStats)">
+                        <span class="value">
+                            {{ ['critChance', 'critMultiplier', 'evasion', 'accuracy', 'magicResistance', 'physicalResistance'].includes(stat[0])
+                                ? `${(stat[1] * 100)}%` 
+                                : `${stat[1] >= 0 ? '+' : '-'} ${stat[1]}` 
+                            }}
+                        </span> 
+                        {{ statNames[stat[0]] }}
+                    </div>
+                </div>
+                <div class="item__tooltip__socket-list" v-if="item.sockets">
+                    <div class="item__tooltip__socket" :class="[rarityNames[socket.gem?.rarity ?? item.rarity]]" v-for="socket in item.sockets" :key="socket.gem?.uuid">
+                        <div v-if="socket.gem" class="item__tooltip__socket__gem">
+                            <img :src="`./item/${socket.gem.icon}`">
+                        </div>
+                        <div v-else class="item__tooltip__socket__gem">
+                            <div class="item__empty-bg" >
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="item__tooltip__value gold" v-if="item.value > 0">{{ context === ContainerContext.Shop || item.id === 'gold' ? item.value * (item.count || 1) : percentageValue(item.value * (item.count || 1), SELL_RATIO) }} 🪙</div>
@@ -158,6 +186,15 @@ const takeItem = (item: Item) => {
     grid-template-columns: repeat(4, 1fr);
     align-content: start;
     gap: .5em;
+
+    &.equipment_upgrade {        
+        .item__tooltip {
+            left: unset;
+            left: 0;
+            bottom: 0;
+            translate: -1px 100%;
+        }
+    }
 
     &.equipment, &.quest_reward {
         .item__tooltip {
@@ -206,6 +243,10 @@ const takeItem = (item: Item) => {
         border-color: gray;
     }
 
+    &:hover .item__tooltip, &.force-tooltip .item__tooltip {
+        display: grid;
+    }
+
     &:hover {
         &::after {
             content: '';
@@ -213,10 +254,6 @@ const takeItem = (item: Item) => {
             pointer-events: none;
             inset: 0;
             box-shadow: inset 0 0 8px 4px rgb(159 139 0 / 50%);
-        }
-
-        .item__tooltip {
-            display: grid;
         }
     }
 
@@ -244,6 +281,7 @@ const takeItem = (item: Item) => {
 
     &__tooltip {
         display: none;
+        text-align: left;
         left: 0;
         bottom: 0;
         translate: -100% 1px;
@@ -251,6 +289,20 @@ const takeItem = (item: Item) => {
         &__value {
             text-align: right;
             line-height: 1;
+        }
+
+        &__socket-list {
+            display: flex;
+            gap: .5em;
+            flex-wrap: wrap;
+        }
+
+        &__socket {
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--clr);
+            border-radius: 50%;
+            overflow: hidden;
         }
     }
 

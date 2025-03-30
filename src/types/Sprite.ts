@@ -132,9 +132,9 @@ export const SPRITES: Record<string, {
 		y: -105
 	},
 	sara: {
-		idle: createSprite("./entity/sara/idle.png", 512, 512, 24, 76),
-		attack: createSprite("./entity/sara/attack.png", 512, 512, 24, 86),
-		hit: createSprite("./entity/sara/hit.png", 512, 512, 17, 76),
+		idle: createSprite("./entity/sara/idle.png", 512, 512, 48, 64),
+		attack: createSprite("./entity/sara/attack.png", 512, 512, 48, 36),
+		hit: createSprite("./entity/sara/hit.png", 512, 512, 48, 28),
 		death: createSprite("./entity/sara/death.png", 512, 512, 24, 76),
 		y: -105
 	}
