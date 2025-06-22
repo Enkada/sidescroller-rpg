@@ -153,7 +153,7 @@ const cancelAttributeAllocation = () => {
 
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 .player-info {
     top: 2em;
     bottom: 2em;
@@ -183,6 +183,11 @@ const cancelAttributeAllocation = () => {
 
         .item-container {
             grid-template-columns: 1fr;
+
+            .item {
+                width: 48px;
+                height: 48px;
+            }
         }
     }
 
@@ -192,7 +197,7 @@ const cancelAttributeAllocation = () => {
         justify-content: space-between;
 
         &__text {
-            padding-block: .5em;
+            padding-block: .6em;
             border: 1px solid transparent;
         }
     }
@@ -219,13 +224,13 @@ const cancelAttributeAllocation = () => {
         place-content: center;
         width: 48px;
         height: 48px;
-        border: 1px solid gray;
+        border: 4px solid var(--clr-ui-border);
         background-color: hsla(0, 0%, 0%, 0.5);
         border-radius: 50%;
     }
 
     &__stat-list {
-        border: 1px solid gray;
+        border: 4px solid var(--clr-ui-border);
         background-color: hsla(0, 0%, 0%, 0.5);
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -243,7 +248,7 @@ const cancelAttributeAllocation = () => {
     }
 
     &__stat-value {
-        color: lime;
+        color: var(--clr-value);
         text-align: right;
     }
 }

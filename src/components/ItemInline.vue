@@ -91,7 +91,7 @@ const formatDescription = (item: Item) => {
         display: none;
         left: 0;
         top: 0;
-        translate: 0 18px;
+        translate: 0 22px;
 
         &__value {
             text-align: right;
@@ -105,7 +105,7 @@ const formatDescription = (item: Item) => {
         display: block;
         image-rendering: auto;
         border: 1px solid var(--clr);
-        translate: 0 3px;
+        translate: 0 5px;
     }
 }
 </style>

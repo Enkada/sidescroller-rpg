@@ -1,8 +1,25 @@
+export const getFPS = () =>
+    new Promise<number>(resolve => {
+        requestAnimationFrame(t1 => {
+            requestAnimationFrame(t2 => {
+                const fps = Math.round(1000 / (t2 - t1));
+                resolve(fps);
+            });
+        });
+    });
+
+export let FRAMES_PER_SECOND = 0;
+export let PLAYER_SPEED = 0;
+
+getFPS().then(fps => {
+    FRAMES_PER_SECOND = fps;
+    PLAYER_SPEED = 14 * 60 / FRAMES_PER_SECOND;
+});
+
 export const SCREEN_WIDTH = 1280;
 export const SCREEN_HEIGHT = 720;
 export const PLAYER_WIDTH = 600;
 export const SCREEN_SWITCH_THRESHOLD = PLAYER_WIDTH / 4;
-export const PLAYER_SPEED = 14;
 export const FOOTSTEP_COOLDOWN = 500;
 export const COMBAT_RANGE = 300;
 export const INTERACTION_RANGE = 150;

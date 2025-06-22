@@ -111,7 +111,7 @@ watch(sortedQuests, (newQuests) => {
     bottom: 2em;
 
     &__content {
-        height: calc(100% - 2em);
+        height: calc(100% - 32px - 8px);
         display: grid;
         grid-template-rows: auto max-content;
         gap: 1em;
@@ -123,9 +123,6 @@ watch(sortedQuests, (newQuests) => {
     }
 
     &__quest {
-        padding: 1em;
-        border: 1px solid gray;
-        background-color: hsla(0, 0%, 0%, 0.5);
         display: grid;
         align-content: start;
         gap: .5em;
@@ -151,7 +148,7 @@ watch(sortedQuests, (newQuests) => {
         &__reward {
             display: grid;
             gap: .5em;
-            border-top: 1px solid gray;
+            border-top: 4px solid var(--clr-ui-border);
             padding-top: .5em;
             margin-top: .5em;
 
@@ -184,12 +181,13 @@ watch(sortedQuests, (newQuests) => {
 
     &__list {
         max-height: 200px;
-        min-height: 100px;
+        min-height: 140px;
         display: grid;
         align-content: start;
-        border: 1px solid gray;
+        border-top: 4px solid var(--clr-ui-border);
         overflow-y: auto;
         background-color: hsla(0, 0%, 0%, 0.5);
+        margin: 0 -1em -1em -1em;
 
         &__item {
             padding: 0.5em;

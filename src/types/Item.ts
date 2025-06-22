@@ -103,6 +103,11 @@ export const GLOBAL_LOOT_TABLE: LootTable = [
     { item: "axe", chance: 0.1, level: 1 },
     { item: "amulet_of_life", chance: 0.1, level: 2 },
     { item: "kitchen_knife", chance: 0.1, level: 1 },
+    { item: "gem", chance: 0.1, level: 5 },
+    { item: "book_of_knowledge", chance: 0.1, level: 1 },
+    { item: "golden_ring", chance: 0.1, level: 1 },
+    { item: "runic_stone", chance: 0.1, level: 1 },
+    { item: "chisel", chance: 0.05, level: 5 },
 ]
 
 export const generateLoot = (lootTable: LootTable, level: number = 1): Item[] => {

@@ -338,7 +338,7 @@ const resetTalentPoints = () => {
         padding: 0;
         position: relative;
         overflow: hidden;
-        height: calc(100% - 2em - 1px);
+        height: calc(100% - 2em - 10px);
     }
 
     &__wrapper {
@@ -377,7 +377,7 @@ const resetTalentPoints = () => {
         width: 48px;
         height: 48px;
         cursor: pointer;
-        border: 1px solid gray;
+        border: 2px solid gray;
         position: relative;
 
         rotate: var(--rotate);

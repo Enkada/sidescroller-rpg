@@ -166,9 +166,9 @@ const formatDescription = (effect: { id: string, duration: number, caster: Comba
 		--border: 4px;
 		width: calc(var(--size) + var(--border) * 2);
 		height: calc(var(--size) + var(--border) * 2);
-		border: var(--border) solid hsl(0deg 0% 30%);
+		border: var(--border) solid var(--clr-ui-border);
 		border-radius: 50%;
-		background-color: hsl(0, 0%, 45%);
+		background-color: var(--clr-ui-border);
 
 		margin-right: -4em;
 
@@ -192,7 +192,7 @@ const formatDescription = (effect: { id: string, duration: number, caster: Comba
 	&__bar-list {
 		display: grid;
 		gap: .25em;
-		background-color: hsl(0deg 0% 30%);
+		background-color: var(--clr-ui-border);
 		padding: .25em;
 		border-radius: 4px;
 

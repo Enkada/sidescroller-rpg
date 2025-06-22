@@ -17,16 +17,16 @@ const selectMenuItem = (item: ScriptMenuItem) => {
             <div class="dialogue__actor" :key="scriptActor">{{ scriptActor }}</div>
             <div class="dialogue__message" :key="scriptMessage">
                 <div v-for="(char, i) in scriptMessage.split('')" :key="i" class="dialogue__message__char"
-                    :style="{ '--index': i }">
+                    :style="{ '--index': i }">	
                     {{ char }}
                 </div>
             </div>
         </div>
         <div class="dialogue__menu" v-if="scriptMenu.length">
-            <button v-for="(item, i) in scriptMenu" :key="i" class="dialogue__menu__item" :style="{ '--index': i }"
+            <div v-for="(item, i) in scriptMenu" :key="i" class="dialogue__menu__item btn" :style="{ '--index': i }"
                 @click="selectMenuItem(item)">
                 {{ item.title.replace(/\&apos\;/g, "'") }}
-            </button>
+            </div>
         </div>
     </div>
 </template>
@@ -74,6 +74,10 @@ const selectMenuItem = (item: ScriptMenuItem) => {
 			background-color: transparent;
 			background-image: linear-gradient(to right, hsla(0, 0%, 0%, 0) 0%, hsla(0, 0%, 0%, 0.8) 25%, hsl(0, 0%, 0%, 0.8) 75%, hsla(0, 0%, 0%, 0) 100%);
 			border: none;
+			text-align: center;
+			padding: .5em;
+			line-height: 1;
+			cursor: pointer;
 
 			transition: letter-spacing .5s;
 

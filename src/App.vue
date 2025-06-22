@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, reactive } from 'vue';
 import { ABILITIES, AbilityFlag, type Ability } from './types/Ability';
-import { SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_WIDTH, SCREEN_SWITCH_THRESHOLD, PLAYER_SPEED, COMBAT_RANGE, ANIMATION_SPEED, INTERACTION_RANGE, FOOTSTEP_COOLDOWN } from './globals';
+import { SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_WIDTH, SCREEN_SWITCH_THRESHOLD, PLAYER_SPEED, COMBAT_RANGE, ANIMATION_SPEED, INTERACTION_RANGE, FOOTSTEP_COOLDOWN, FRAMES_PER_SECOND } from './globals';
 import { CombatEntity, type Player } from './types/CombatEntity';
 import EntityFrame from './components/EntityFrame.vue';
 import AbilityButton from './components/AbilityButton.vue';
 import { createSprite, SPRITES, type Sprite, type SpriteSet } from './types/Sprite';
-import { getById, getXP, hasFlag, Window, playSound, SETTINGS, percentageValue } from './utils';
+import { getById, getXP, hasFlag, Window, playSound, SETTINGS, percentageValue, type ScreenObject, InteractionType, type ScreenEnemy, type Screen } from './utils';
 import { EffectFlag, EFFECTS, entityEffect, type Effect } from './types/Effect';
 import { getTalentById, TalentType } from './types/Talent';
 import TalentTree from './components/TalentTree.vue';
@@ -25,6 +25,7 @@ import FloatingTextList from './components/FloatingTextList.vue';
 import { script, scriptIndex, scriptActor, scriptMessage, scriptMenu, parseArguments, getScriptLines, type ScriptMenuItem, type DialogueOption, DialogueType } from './types/Script';
 import Dialogue from './components/Dialogue.vue';
 import EquipmentUpgrade from './components/EquipmentUpgrade.vue';
+import DevTools from './components/DevTools.vue';
 let lastFootstepTime = 0;
 
 const windows = ref<Window[]>([]);
@@ -38,9 +39,9 @@ const toggleWindow = (window: Window) => {
 }
 
 const openWindow = (window: Window) => {
-	// If opening Talents, close all other windows
-	if (window === Window.TalentTree) {
-		windows.value = [Window.TalentTree];
+	// If opening Talents or DevTools, close all other windows
+	if ([Window.TalentTree, Window.DevTools].includes(window)) {
+		windows.value = [window];
 		return;
 	}
 
@@ -71,21 +72,7 @@ const isWindowOpen = (window: Window) => windows.value.includes(window);
 
 const questShowcaseId = ref<string | null>(null);
 
-type Screen = {
-	id: string
-	name: string
-	background: string
-	left: string | null
-	right: string | null
-	objects?: ScreenObject[]
-	enemies?: ScreenEnemy[]
-}
 
-type ScreenEnemy = {
-	id: string 		// id of ENEMIES
-	chance: number 	// 0.0 - 1.0 chance to spawn
-	level: number 	// -1 - equals player level, 1+ - exact level
-}
 
 const createScreenEnemy = (id: string, chance: number = 0.5, level: number = -1): ScreenEnemy => {
 	return {
@@ -133,23 +120,6 @@ const combat = reactive<Combat>({
 	}
 });
 
-enum InteractionType {
-	None,
-	Entrance,
-	Dialogue
-}
-
-type ScreenObject = {
-	uuid: string
-	name: string
-	x: number
-	y: number
-	sprite: Sprite
-	width: number
-	interaction: InteractionType
-	dialogue?: DialogueOption[]
-}
-
 const setScreenObjectDialogue = (screenObject: ScreenObject, dialogue: DialogueOption[]): ScreenObject => {
 	screenObject.interaction = InteractionType.Dialogue;
 	screenObject.dialogue = dialogue;
@@ -175,7 +145,7 @@ const ENEMIES: Record<string, {
 	fly: {
 		lootTable: [
 			{ item: "gold", chance: 1, level: 1, count: { min: 1, max: 10 } },
-			{ item: "bone", chance: .5, level: 1 },
+			{ item: "bug_meat", chance: .5, level: 1 },
 		],
 		combat: (level: number) => CombatEntity.create("fly", "Fly", level, {
 			intelligence: 10,
@@ -186,7 +156,7 @@ const ENEMIES: Record<string, {
 	spider: {
 		lootTable: [
 			{ item: "gold", chance: 1, level: 1, count: { min: 1, max: 10 } },
-			{ item: "bone", chance: .5, level: 1 },
+			{ item: "bug_meat", chance: .5, level: 1 },
 		],
 		combat: (level: number) => CombatEntity.create("spider", "Spider", level, {
 			intelligence: 10,
@@ -290,14 +260,16 @@ const player = ref<Player>({
 	x: 200,
 	xp: 0,
 	gold: 10,
-	variables: {},
+	variables: {
+		save_start_time: new Date().toISOString(),
+	},
 	quests: {
 		// fly_hunter: false,
 		// gold_collector: false
 	},
 	inventory: Container.create(16),
 	points: {
-		attributesAvailable: 0,
+		attributesAvailable: 3,
 		attributesAllocated: {
 			strength: 0,
 			agility: 0,
@@ -780,6 +752,9 @@ const onKeyUp = (e: KeyboardEvent) => {
 			break;
 		case 'u':
 			toggleWindow(Window.EquipmentUpgrade);
+			break;
+		case '`':
+			toggleWindow(Window.DevTools);
 			break;
 		case 'g':
 			player.value.inventory.add(createItem(ITEMS.filter(x => x.type !== ItemType.Armor).map(x => x.id)[Math.floor(Math.random() * ITEMS.filter(x => x.type !== ItemType.Armor).map(x => x.id).length)]));
@@ -1316,10 +1291,10 @@ const runScript = async (name: string) => {
 </script>
 
 <template>
-	<div class="game" :style="{ backgroundImage: `url('/bg/${currentScreen.background}')` }">
+	<div class="game" :style="{ backgroundImage: `url('/bg/${currentScreen.background}')`, width: `${SCREEN_WIDTH}px`, height: `${SCREEN_HEIGHT}px` }">
 		<canvas ref="canvasRef" class="canvas" :width="SCREEN_WIDTH" :height="SCREEN_HEIGHT"></canvas>
 		<div class="ui">
-			<div class="build-info">Sidescroller RPG v0 | @enkada | 23.03.2025</div>
+			<div class="build-info">Sidescroller RPG v0 | @enkada | 22.06.2025 | {{ FRAMES_PER_SECOND }} FPS</div>
 			<EntityFrame :entity="player.combat" :player="player"
 				:showXPBar="!combat.isInProgress || postCombat.isOpen" />
 			<EntityFrame v-if="combat.enemy" :entity="combat.enemy" :isEnemy="true" />
@@ -1350,16 +1325,17 @@ const runScript = async (name: string) => {
 			<QuestLog v-if="isWindowOpen(Window.Quest)" :player="player" @close="closeWindow(Window.Quest)" />
 			<QuestShowcase v-if="questShowcaseId" :questId="questShowcaseId" :player="player" />
 			<Settings v-if="isWindowOpen(Window.Settings)" @close="closeWindow(Window.Settings)" />
+			<DevTools v-if="isWindowOpen(Window.DevTools)" @close="closeWindow(Window.DevTools)" :player="player" :enemies="ENEMIES" :screens="SCREENS"/>
 			<FloatingTextList :texts="floatingText" />
 			<ToolBar :windows="windows" @toggleWindow="toggleWindow" />
 
 			<!-- Interaction with Screen Objects -->
 			<div class="dialogue__menu" v-if="dialogueMenu.length">
-				<button v-for="(option, i) in dialogueMenu" class="dialogue__menu__item" :style="{ '--index': i }"
+				<div v-for="(option, i) in dialogueMenu" class="dialogue__menu__item btn" :style="{ '--index': i }"
 					@click="selectDialogueOption(option)">
 					{{ option.type === DialogueType.Shop ? '💰 Shop' : option.type === DialogueType.QuestAccept ? `❗${option.quest?.title}` : option.type === DialogueType.QuestComplete ? `✔️ ${option.quest?.title}` : option.text }}
-				</button>
-				<button @click="dialogueMenu = []" class="dialogue__menu__item" :style="{ '--index': dialogueMenu.length }" >Return</button>
+				</div>
+				<div @click="dialogueMenu = []" class="dialogue__menu__item btn" :style="{ '--index': dialogueMenu.length }" >Return</div>
 			</div>
 
 			<Dialogue 
@@ -1372,8 +1348,8 @@ const runScript = async (name: string) => {
 
 <style lang="scss">
 .game {
-	width: 1280px;
-	height: 720px;
+	//width: 1280px;
+	//height: 720px;
 	//outline: 1px solid yellow;
 	image-rendering: pixelated;
 	background-size: cover;
@@ -1442,8 +1418,8 @@ pre {
 	left: calc(50% - 160px);
 	top: 4em;
 	width: 320px;
-	background-color: hsla(0, 0%, 0%, 0.5);
-	border: 1px solid gray;
+	background-image: url("ui_bg.jpg");
+	border: var(--ui-border-width) solid var(--clr-ui-border);
 
 	animation: scaleIn 1s ease;
 	transform-origin: center;

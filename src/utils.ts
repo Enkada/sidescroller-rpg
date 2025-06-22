@@ -1,4 +1,6 @@
 import { ref, watch } from "vue";
+import type { Sprite } from "./types/Sprite";
+import type { DialogueOption } from "./types/Script";
 
 export enum Window {
 	Character,
@@ -7,6 +9,40 @@ export enum Window {
 	Quest,
 	Settings,
 	EquipmentUpgrade,
+	DevTools,
+}
+
+export type Screen = {
+	id: string
+	name: string
+	background: string
+	left: string | null
+	right: string | null
+	objects?: ScreenObject[]
+	enemies?: ScreenEnemy[]
+}
+
+export enum InteractionType {
+	None,
+	Entrance,
+	Dialogue
+}
+
+export type ScreenObject = {
+	uuid: string
+	name: string
+	x: number
+	y: number
+	sprite: Sprite
+	width: number
+	interaction: InteractionType
+	dialogue?: DialogueOption[]
+}
+
+export type ScreenEnemy = {
+	id: string 		// id of ENEMIES
+	chance: number 	// 0.0 - 1.0 chance to spawn
+	level: number 	// -1 - equals player level, 1+ - exact level
 }
 
 // Load settings from localStorage

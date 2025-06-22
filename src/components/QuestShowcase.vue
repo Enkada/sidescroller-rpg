@@ -39,8 +39,8 @@ const quest = QUESTS.find(q => q.id === props.questId);
     bottom: calc(200px + 2em);
     width: calc(4 * (64px + .5em) + 2em);
     padding: 1em;
-    border: 1px solid gray;
-    background-color: hsla(0, 0%, 0%, 0.5);
+    border: 8px solid var(--clr-ui-border);
+    background-image: url("ui_bg.jpg");
     display: grid;
     gap: .5em;
 
@@ -66,7 +66,7 @@ const quest = QUESTS.find(q => q.id === props.questId);
     &__rewards {
         display: grid;
         gap: .5em;
-        border-top: 1px solid gray;
+        border-top: 4px solid var(--clr-ui-border);
         padding-top: .5em;
         margin-top: .5em;
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ContainerContext, isEquipment, ItemType, rarityNames, statNames, type Container, type Item, type ItemStats } from '../types/Item';
+import { ContainerContext, isEquipment, ItemRarity, ItemType, rarityNames, statNames, type Container, type Item, type ItemStats } from '../types/Item';
 import type { CombatEntity, Player } from '../types/CombatEntity';
 import { percentageValue, playSound } from '../utils';
 import { SELL_RATIO } from '../globals';
@@ -134,7 +134,7 @@ const takeItem = (item: Item) => {
                 <div class="item__tooltip__header tooltip__header">
                     <div class="item__tooltip__name tooltip__name">{{ item.name }}</div>
                 </div>
-                <div class="item__tooltip__type tooltip__type">{{ item.type[0].toUpperCase() + item.type.slice(1) }}</div>
+                <div class="item__tooltip__type tooltip__type">{{ item.type[0].toUpperCase() + item.type.slice(1) }} {{ item.level ? `Lv.${item.level}` : '' }}</div>
                 <div class="item__tooltip__description" v-if="item.description" v-html="formatDescription(item)"></div>
                 <div class="item__tooltip__stat-list" v-if="item.stats" >
                     <div class="item__tooltip__stat" v-for="stat in Object.entries(item.stats)">
@@ -160,7 +160,7 @@ const takeItem = (item: Item) => {
                     </div>
                 </div>
                 <div class="item__tooltip__socket-list" v-if="item.sockets">
-                    <div class="item__tooltip__socket" :class="[rarityNames[socket.gem?.rarity ?? item.rarity]]" v-for="socket in item.sockets" :key="socket.gem?.uuid">
+                    <div class="item__tooltip__socket" :class="[rarityNames[socket.gem?.rarity ?? ItemRarity.Junk]]" v-for="socket in item.sockets" :key="socket.gem?.uuid">
                         <div v-if="socket.gem" class="item__tooltip__socket__gem">
                             <img :src="`./item/${socket.gem.icon}`">
                         </div>
@@ -192,7 +192,14 @@ const takeItem = (item: Item) => {
             left: unset;
             left: 0;
             bottom: 0;
-            translate: -1px 100%;
+            translate: -4px 100%;
+        }
+    }
+
+    &.shop {
+        .item__tooltip {
+            top: 0;
+            translate: -100% -4px;
         }
     }
 
@@ -201,14 +208,16 @@ const takeItem = (item: Item) => {
             left: unset;
             right: 0;
             top: 0;
-            translate: 100% -1px;
+            translate: 100% -4px;
         }
 
         .item__menu {
             left: unset;
             right: 0;
             top: 0;
-            translate: 100% -1px;
+            translate: 100% -4px;
+
+            transform-origin: top left;
         }
     }
 }
@@ -216,10 +225,35 @@ const takeItem = (item: Item) => {
 .item {
     width: 56px;
     aspect-ratio: 1 / 1;
-    border-width: 1px;
-    border-style: solid;
-    border-color: var(--clr);
+    border-width: 4px;
+    border-style: double;
+    border-radius: 4px;
+    border-color: var(--clr-ui-border);
     position: relative;
+
+    &:not(&.common) {
+        border-color: var(--clr-ui-border);
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 4px;
+            border: 1px solid var(--clr);
+            pointer-events: none;
+        }
+    }
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 4px;
+        border: 2px solid var(--clr-ui-border);
+        pointer-events: none;
+        opacity: 1;
+        filter: blur(1px);
+    }
 
     &__empty-bg {
         width: 100%;
@@ -230,7 +264,7 @@ const takeItem = (item: Item) => {
     &__count {
         position: absolute;
         right: 4px;
-        bottom: 4px;
+        bottom: 1px;
         color: white;
         text-shadow:
             -1px -1px 2px #000,
@@ -240,19 +274,22 @@ const takeItem = (item: Item) => {
     }
 
     &.empty {
-        border-color: gray;
+        border-color: var(--clr-ui-border);
     }
 
     &:hover .item__tooltip, &.force-tooltip .item__tooltip {
         display: grid;
     }
 
+    &::after {
+        content: '';
+        position: absolute;
+        pointer-events: none;
+        inset: 0;
+    }
+
     &:hover {
         &::after {
-            content: '';
-            position: absolute;
-            pointer-events: none;
-            inset: 0;
             box-shadow: inset 0 0 8px 4px rgb(159 139 0 / 50%);
         }
     }
@@ -264,9 +301,17 @@ const takeItem = (item: Item) => {
         top: 0;
         translate: -100% -1px;
         z-index: 2000;
-        background-color: hsla(0, 0%, 0%, 0.8);
-        border: 1px solid white;
+        background-image: url("ui_bg.jpg");
+        border: 4px solid var(--clr-ui-border);
+        box-shadow: 0 0 8px 2px rgba(0, 0, 0, 0.7);
         width: max-content;
+
+        animation: scaleIn .15s ease-in-out;
+        transform-origin: top right;
+
+        &:empty {
+            display: none;
+        }
 
         &__action {
             text-align: center;
@@ -274,7 +319,7 @@ const takeItem = (item: Item) => {
             cursor: pointer;
 
             &:hover {
-                background-color: hsla(0, 0%, 100%, 0.3);
+                background-color: hsla(0, 0%, 100%, 0.1);
             }
         }
     }

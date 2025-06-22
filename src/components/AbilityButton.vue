@@ -71,16 +71,21 @@ const formatDescription = (ability: Ability, player: CombatEntity) => {
     width: 64px;
     height: 64px;
     cursor: pointer;
-    border: 1px solid gray;
+    border: 4px solid var(--clr-ui-border);
+    border-radius: 4px;
     position: relative;
 
+    &::after {
+        content: '';
+        position: absolute;
+        pointer-events: none;
+        inset: 0;
+    }
+
     &:hover {
-        border-color: white;
+        // border-color: white;
 
         &::after {
-            content: '';
-            position: absolute;
-            inset: 0;
             box-shadow: inset 0 0 8px 4px rgb(159 139 0 / 50%);
         }
 

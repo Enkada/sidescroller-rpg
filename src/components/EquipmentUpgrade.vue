@@ -78,7 +78,7 @@ const upgrade = () => {
             </div>
             <div class="equipment-upgrade__selected-item" v-if="selectedItem">
                 <ItemContainer :container="Container.create(1, [selectedItem])" :player="player" :context="ContainerContext.EquipmentUpgrade" forceTooltip />
-                <span>-></span>
+                <span class="arrow">➟</span>
                 <ItemContainer :container="Container.create(1, [upgradedItem(selectedItem)])" :player="player" :context="ContainerContext.EquipmentUpgrade" forceTooltip />
             </div>
             <div class="button-list">
@@ -94,8 +94,13 @@ const upgrade = () => {
 .equipment-upgrade {
     top: 2em;
     bottom: 2em;
-    width: 408px;
-    left: calc(50% - 204px);
+    --width: 422px;
+    width: var(--width);
+    left: calc(50% - (var(--width) / 2));
+
+    .arrow {
+        scale: 4;
+    }
 
     .button-list {
         display: flex;
