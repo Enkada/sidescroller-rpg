@@ -34,6 +34,7 @@ export type Player = {
 export class CombatEntity {
 	public health: number;
 	public mana: number;
+	public armor: number; 
 	public cooldowns: Record<string, number>; // Ability ID -> Cooldown
 	public talents: Record<string, number>; // Talent ID -> Level
 	public usedActions: string[];
@@ -54,7 +55,6 @@ export class CombatEntity {
 		public spriteId: string,
 		public attackSound: { id: string, volume: number, variations: number }
 	) {
-		// Initialize health and mana to max values
 		this.health = this.maxHealth;
 		this.mana = this.maxMana;
 		this.cooldowns = {};
@@ -62,19 +62,20 @@ export class CombatEntity {
 		this.usedActions = [];
 		this.equipment = { 
 			weapon: Container.create(1), 
-			armor: Container.create(5, [
+			armor: Container.create(5, this.id === "player" ? [
 				createItem("shoulder_pads"),
 				createItem("chestplate"),
 				createItem("gloves"),
 				createItem("pants"),
 				createItem("boots")
-			]), 
+			] : []), 
 			ring: Container.create(2), 
 			amulet: Container.create(1),
 			relic: Container.create(2)
 		};
 		this.effects = [];		
 		this.sprite = CombatEntity.getSpriteSet(spriteId);
+		this.armor = this.maxArmor;
 	}
 
 	totalEquipmentStat(stat: keyof ItemStats): number {
@@ -142,6 +143,10 @@ export class CombatEntity {
 
 	get physicalResistance(): number {
 		return PHYSICAL_RESISTANCE_INITIAL + this.totalEquipmentStat("physicalResistance");
+	}
+
+	get maxArmor(): number {
+		return this.totalEquipmentStat("armor");
 	}
 
 	healthFix(): void {

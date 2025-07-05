@@ -1,39 +1,56 @@
 <script setup lang="ts">
 import { Window } from '../utils';
 
-defineProps<{
+const { windows, disabledWindows } = defineProps<{
 	windows: Window[];
+	disabledWindows?: Window[];
 }>();
 
 const emit = defineEmits<{
 	(e: 'toggleWindow', window: Window): void;
 }>();
+
+const handleClick = (window: Window) => {
+	if (!disabledWindows?.includes(window)) {
+		emit('toggleWindow', window);
+	}
+};
 </script>
 
 <template>
 	<div class="tool-bar">
-		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.Character) }"
-			@click="emit('toggleWindow', Window.Character)">
+		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.Character), 'disabled': disabledWindows?.includes(Window.Character) }"
+			@click="handleClick(Window.Character)">
 			<div class="tool-bar__icon">⚔️</div>
 			<div class="tool-bar__hotkey">C</div>
 		</div>
-		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.TalentTree) }"
-			@click="emit('toggleWindow', Window.TalentTree)">
+		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.TalentTree), 'disabled': disabledWindows?.includes(Window.TalentTree) }"
+			@click="handleClick(Window.TalentTree)">
 			<div class="tool-bar__icon">🌳</div>
 			<div class="tool-bar__hotkey">N</div>
 		</div>
-		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.Inventory) }"
-			@click="emit('toggleWindow', Window.Inventory)">
+		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.Inventory), 'disabled': disabledWindows?.includes(Window.Inventory) }"
+			@click="handleClick(Window.Inventory)">
 			<div class="tool-bar__icon">💼</div>
-			<div class="tool-bar__hotkey">I</div>
+			<div class="tool-bar__hotkey">B</div>
 		</div>
-		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.Quest) }"
-			@click="emit('toggleWindow', Window.Quest)">
+		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.Quest), 'disabled': disabledWindows?.includes(Window.Quest) }"
+			@click="handleClick(Window.Quest)">
 			<div class="tool-bar__icon">📜</div>
 			<div class="tool-bar__hotkey">L</div>
 		</div>
-		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.Settings) }"
-			@click="emit('toggleWindow', Window.Settings)">
+		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.Guide), 'disabled': disabledWindows?.includes(Window.Guide) }"
+			@click="handleClick(Window.Guide)">
+			<div class="tool-bar__icon">📖</div>
+			<div class="tool-bar__hotkey">P</div>
+		</div>
+		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.SaveLoad), 'disabled': disabledWindows?.includes(Window.SaveLoad) }"
+			@click="handleClick(Window.SaveLoad)">
+			<div class="tool-bar__icon">💾</div>
+			<div class="tool-bar__hotkey">I</div>
+		</div>
+		<div class="tool-bar__button btn" :class="{ 'active': windows.includes(Window.Settings), 'disabled': disabledWindows?.includes(Window.Settings) }"
+			@click="handleClick(Window.Settings)">
 			<div class="tool-bar__icon">⚙️</div>
 			<div class="tool-bar__hotkey">O</div>
 		</div>
@@ -65,10 +82,18 @@ const emit = defineEmits<{
 		text-shadow: 1px 1px 1px black;
 		margin-right: -0px;
 		position: relative;
+		outline-color: var(--clr-ui-border);
+
+		transition: background-color 0.2s ease, outline 0.2s ease;
 
 		&.active {
 			outline: 4px solid var(--clr-ui-border);
 			background-color: hsla(0, 0%, 0%, 0.5);
+		}
+
+		&.disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
 		}
 	}
 }

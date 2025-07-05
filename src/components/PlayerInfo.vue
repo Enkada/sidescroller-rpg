@@ -128,6 +128,8 @@ const cancelAttributeAllocation = () => {
                     <div class="player-info__stat-value">{{ player.combat.manaRegen }}</div>
                     <div class="player-info__stat-name">Attack Damage</div>
                     <div class="player-info__stat-value">{{ player.combat.attackDamage }}</div>
+                    <div class="player-info__stat-name">Armor</div>
+                    <div class="player-info__stat-value">{{ player.combat.armor }} / {{ player.combat.maxArmor }}</div>
                     <div class="player-info__stat-name">Critical Chance</div>
                     <div class="player-info__stat-value">{{ Math.round(player.combat.critChance * 100 * 10) / 10 }}%
                     </div>
@@ -171,7 +173,7 @@ const cancelAttributeAllocation = () => {
         justify-content: space-between;
         align-items: flex-end;
 
-        background-image: url('./player_equipment.png');
+        background-image: url('/ui/player_equipment.png');
         background-size: contain;
         background-repeat: no-repeat;
         background-position: 50% 50%;

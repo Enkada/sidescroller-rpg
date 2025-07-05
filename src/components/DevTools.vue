@@ -25,6 +25,15 @@ const activeTab = ref('items');
 const shopContainer = ref(Container.create(ITEMS.length));
 const selectedJsonObject = ref('player');
 
+// Function to format date as DD.MM.YYYY
+const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
+};
+
 // Computed property to get the selected JSON data to display
 const jsonData = computed(() => {
     switch (selectedJsonObject.value) {
@@ -276,7 +285,7 @@ onMounted(() => {
             padding: 5px;
 
             .item-inline {
-                
+                /* Placeholder for future styles */
             }
             
             .warning-reason {
@@ -290,6 +299,13 @@ onMounted(() => {
             padding: 20px 0;
         }
     }
+}
+
+.loading {
+    text-align: center;
+    padding: 50px;
+    color: #aaa;
+    font-style: italic;
 }
 
 .variables-table {

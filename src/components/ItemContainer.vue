@@ -42,6 +42,8 @@ const equipItem = (item: Item) => {
         props.container.move(item, equipmentContainer);
     }
 
+    props.player.combat.armor = props.player.combat.maxArmor;
+
     selectedItem.value = null;
 }
 
@@ -301,7 +303,7 @@ const takeItem = (item: Item) => {
         top: 0;
         translate: -100% -1px;
         z-index: 2000;
-        background-image: url("ui_bg.jpg");
+        background-image: url("/ui/bg.jpg");
         border: 4px solid var(--clr-ui-border);
         box-shadow: 0 0 8px 2px rgba(0, 0, 0, 0.7);
         width: max-content;

@@ -39,6 +39,14 @@ body {
   overflow: hidden;
 }
 
+html:-webkit-full-screen .game {
+  transform: scale(var(--scale-factor));
+}
+
+html:fullscreen .game {
+  transform: scale(var(--scale-factor));
+}
+
 .junk {
   --clr: var(--clr-item-junk);
 }
@@ -73,13 +81,13 @@ body {
 
 button {
   cursor: pointer;
-  background-image: url("ui_bg.jpg");
+  background-image: url("./ui/bg.jpg");
   padding: 0.5em 1em;
   font-family: inherit;
   font-size: 1em;
   color: var(--clr-ui-text);
   border: 2px solid var(--clr-ui-border);
-  border-radius: 4px;
+  border-radius: 0.3em;
   box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.5);
   position: relative;
   overflow: hidden;
@@ -99,9 +107,10 @@ button:focus {
 }
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.8;
   box-shadow: none;
   transform: none;
+  filter: grayscale(1);
 }
 
 .button-list {
@@ -114,7 +123,7 @@ button:disabled {
   gap: 0.5em;
   position: absolute;
   padding: 1em;
-  background-image: url("ui_bg.jpg");
+  background-image: url("/ui/bg.jpg");
   border: 8px solid var(--clr-ui-border); /* var(--clr, white) */
   border-radius: 4px;
   box-shadow: 0 0 8px 2px rgba(0, 0, 0, 0.7);
@@ -138,13 +147,14 @@ button:disabled {
 
 .window {
   position: absolute;
-  background-image: url("ui_bg.jpg");
+  background-image: url("/ui/bg.jpg");
   border: var(--ui-border-width) solid var(--clr-ui-border);
   border-radius: 4px;
   z-index: 1000;
   -webkit-backdrop-filter: blur(4px);
           backdrop-filter: blur(4px);
   box-shadow: 0 0 8px 0px rgba(0, 0, 0, 0.5);
+  animation: alternate ease-in-out 0.2s, slideTop 0.3s, opacityIn 0.3s;
 }
 .window__name {
   padding: 0.5em 1em;
@@ -220,9 +230,33 @@ button:disabled {
     opacity: 1;
   }
 }
+@keyframes opacityOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes slideTop {
+  from {
+    transform: translateY(100px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes slideBottom {
+  from {
+    transform: translateY(-100px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
 @keyframes slideRight {
   from {
-    transform: translateX(-100%);
+    transform: translateX(-100px);
   }
   to {
     transform: translateX(0);
@@ -230,7 +264,7 @@ button:disabled {
 }
 @keyframes slideLeft {
   from {
-    transform: translateX(100%);
+    transform: translateX(100px);
   }
   to {
     transform: translateX(0);

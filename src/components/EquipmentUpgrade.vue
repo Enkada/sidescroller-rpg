@@ -39,13 +39,14 @@ const upgradedItem = (item: Item) => {
 const upgrade = () => {
     if (!selectedItem.value) return;
 
-
     if (selectedItem.value.uuid === props.player.combat.equipment.weapon.items[0]?.uuid) {
         props.player.combat.equipment.weapon.items = [upgradedItem(selectedItem.value)];
     }
     else {
         props.player.combat.equipment.armor.items = props.player.combat.equipment.armor.items.map(i => i.uuid === selectedItem.value?.uuid ? upgradedItem(i) : i);
     }
+
+    props.player.combat.armor = props.player.combat.maxArmor; 
 
     props.player.inventory.remove(props.consumable);
     emit('close');

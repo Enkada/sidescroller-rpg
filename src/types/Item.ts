@@ -4,6 +4,7 @@ export enum ItemType {
     Quest = 'quest',
     Currency = 'currency',
     Gem = 'gem',
+    Reagent = 'reagent',
     // Equipment  
     Armor = 'armor',
     Amulet = 'amulet',
@@ -46,6 +47,7 @@ export type ItemStats = {
     accuracy?: number
     magicResistance?: number
     physicalResistance?: number
+    armor?: number
 }
 
 export const statNames: Record<string, string> = {
@@ -61,7 +63,8 @@ export const statNames: Record<string, string> = {
     evasion: "Evasion",
     accuracy: "Accuracy",
     magicResistance: "Magic Resistance",
-    physicalResistance: "Physical Resistance"
+    physicalResistance: "Physical Resistance",
+    armor: "Armor"
 }
 
 export type Item = {
@@ -110,6 +113,11 @@ export const GLOBAL_LOOT_TABLE: LootTable = [
     { item: "chisel", chance: 0.05, level: 5 },
 ]
 
+export const CHEST_LOOT_TABLE: LootTable = GLOBAL_LOOT_TABLE.map(l => ({
+    ...l,
+    chance: Math.min(l.chance * 1.5, 1)
+}));
+
 export const generateLoot = (lootTable: LootTable, level: number = 1): Item[] => {
     const loot: Item[] = [];
 
@@ -157,6 +165,10 @@ export class Container {
         return this.items.length;
     }
 
+    public copy(): Container {
+        return Container.create(this.size, this.items.map(item => ({ ...item })));
+    }
+
     public add(item: Item, index?: number): boolean {
         if (item.isStackable) {
             const existingIndex = this.items.findIndex(x => x.id === item.id);
@@ -170,7 +182,7 @@ export class Container {
             if (typeof index === 'number' && index >= 0 && index <= this.items.length) {
                 this.items.splice(index, 0, item);
             } else {
-                this.items.push(item);
+                this.items.push({...item, uuid: crypto.randomUUID() });
             }
             return true;
         }
@@ -259,6 +271,9 @@ export const ITEMS: Item[] = [
         icon: "296.jpg",
         name: "Boots",
         type: ItemType.Armor,
+        stats: {
+            armor: 5
+        },
         rarity: ItemRarity.Common,
         value: 0
     },
@@ -267,6 +282,9 @@ export const ITEMS: Item[] = [
         icon: "3589.jpg",
         name: "Shoulder Pads",
         type: ItemType.Armor,
+        stats: {
+            armor: 5
+        },
         rarity: ItemRarity.Common,
         value: 0
     },
@@ -275,6 +293,9 @@ export const ITEMS: Item[] = [
         icon: "541.jpg",
         name: "Chestplate",
         type: ItemType.Armor,
+        stats: {
+            armor: 5
+        },
         rarity: ItemRarity.Common,
         value: 0
     },
@@ -283,6 +304,9 @@ export const ITEMS: Item[] = [
         icon: "782.jpg",
         name: "Gloves",
         type: ItemType.Armor,
+        stats: {
+            armor: 5
+        },
         rarity: ItemRarity.Common,
         value: 0
     },
@@ -291,6 +315,9 @@ export const ITEMS: Item[] = [
         icon: "3102.jpg",
         name: "Pants",
         type: ItemType.Armor,
+        stats: {
+            armor: 5
+        },
         rarity: ItemRarity.Common,
         value: 0
     },
@@ -432,6 +459,16 @@ export const ITEMS: Item[] = [
         type: ItemType.Consumable,
         rarity: ItemRarity.Common,
         value: 0
+    },
+    {
+        id: "fern",
+        icon: "2488.jpg",
+        name: "Fern",
+        description: "A common plant found in the forest",
+        type: ItemType.Reagent,
+        rarity: ItemRarity.Common,
+        isStackable: true,
+        value: 5,
     }
 ]
 
@@ -453,6 +490,7 @@ export const createRandomEnchantment = (item: Item) => {
         accuracy: (level) => level * 0.01 + Math.floor(Math.random() * 1) / 100,
         magicResistance: (level) => level * 0.01 + Math.floor(Math.random() * 1) / 100,
         physicalResistance: (level) => level * 0.01 + Math.floor(Math.random() * 1) / 100,
+        armor: (level) => level * 2 + Math.floor(Math.random() * 2),
     }
 
     // Add 1 random stat for each rarity level

@@ -10,6 +10,7 @@ export type SpriteSet = {
 
 export type Sprite = {
 	image: HTMLImageElement
+    src: string	
 	width: number	// Frame width
 	height: number	// Frame height
 	frameCount: number
@@ -71,7 +72,7 @@ export const calculateSpriteBounds = (image: HTMLImageElement) => {
     };
 };
 
-export const createSprite = (src: string, width: number, height: number, frameCount: number, animationSpeed: number = ANIMATION_SPEED): Sprite => {
+export const createSprite = (src: string, width: number, height: number, frameCount: number = 1, animationSpeed: number = ANIMATION_SPEED): Sprite => {
     const image = new Image();
     image.src = src;
     
@@ -83,6 +84,7 @@ export const createSprite = (src: string, width: number, height: number, frameCo
     // Return a sprite with temporary bounds that will be updated when loaded
     const sprite: Sprite = {
         image,
+        src,
         width,
         height,
         frameCount,

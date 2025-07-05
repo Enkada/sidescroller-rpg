@@ -1,6 +1,28 @@
 import { ref, watch } from "vue";
 import type { Sprite } from "./types/Sprite";
 import type { DialogueOption } from "./types/Script";
+import type { Container, LootTable } from "./types/Item";
+import type { CombatEntity, Player } from "./types/CombatEntity";
+import changelogData from './changelog.json';
+
+// FPS Management
+export const FRAMES_PER_SECOND = ref(0);
+
+export const getFPS = () =>
+    new Promise<number>(resolve => {
+        requestAnimationFrame(t1 => {
+            requestAnimationFrame(t2 => {
+                const fps = Math.min(Math.round(1000 / (t2 - t1)), 165);
+                resolve(fps);
+            });
+        });
+    });
+
+export const updateFPS = async () => {
+    const fps = await getFPS();
+    FRAMES_PER_SECOND.value = fps;
+    return fps;
+};
 
 export enum Window {
 	Character,
@@ -10,6 +32,8 @@ export enum Window {
 	Settings,
 	EquipmentUpgrade,
 	DevTools,
+	Guide,
+	SaveLoad,
 }
 
 export type Screen = {
@@ -18,6 +42,8 @@ export type Screen = {
 	background: string
 	left: string | null
 	right: string | null
+	leftX?: number
+	rightX?: number
 	objects?: ScreenObject[]
 	enemies?: ScreenEnemy[]
 }
@@ -25,18 +51,26 @@ export type Screen = {
 export enum InteractionType {
 	None,
 	Entrance,
-	Dialogue
+	Dialogue,
+	Container,
 }
 
 export type ScreenObject = {
 	uuid: string
 	name: string
-	x: number
+	x: number[]
 	y: number
 	sprite: Sprite
 	width: number
 	interaction: InteractionType
+	screen?: string 
+	screenX?: number 
 	dialogue?: DialogueOption[]
+	container?: Container
+	lootTable?: LootTable
+	unique?: boolean 
+	removeOnEmpty?: boolean
+	chance?: number // 0.0 - 1.0 chance to spawn
 }
 
 export type ScreenEnemy = {
@@ -76,3 +110,52 @@ export const getById = <T extends { id: string }>(array: T[], id: string): T => 
 export const getXP = (level: number): number => level * 100;
 
 export const percentageValue = (value: number, ratio: number): number => Math.ceil(value * ratio);
+
+export const seededNoise = (seed: number, salt: string): number => {
+  const input = seed.toString() + ':' + salt
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i)
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)
+  }
+  return (hash >>> 0) / 0xFFFFFFFF
+}
+
+export const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    } else {
+        document.documentElement.requestFullscreen();
+    }
+};
+
+export const getLastVersionData = () => {
+	// Get the last entry from changelog
+	const lastKey = Math.max(...Object.keys(changelogData).map(Number));
+	const lastKeyStr = lastKey.toString() as keyof typeof changelogData;
+	const lastEntry = changelogData[lastKeyStr];
+	
+	// Format the date to match the existing format
+	const date = new Date(lastEntry.date);
+	const formattedDate = date.toLocaleDateString('ru-RU', {
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric'
+	});
+	
+	return {
+		version: lastEntry.version,
+		buildDate: formattedDate
+	};
+};
+
+export type SaveData = {
+    player: Player
+    currentScreen: Screen
+    screenRandom: number
+    screenEnemy: {
+        combat: CombatEntity
+        lootTable: LootTable
+        position: "left" | "right"
+    } | null
+}

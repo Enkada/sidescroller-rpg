@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { SETTINGS } from '../utils';
+import { SETTINGS, toggleFullscreen } from '../utils';
 
 const volume = ref(SETTINGS.value.volume);
 const shadows = ref(SETTINGS.value.shadows);
@@ -35,6 +35,7 @@ watch([volume, shadows, imageSmoothing], ([newVolume, newShadows, newImageSmooth
                 <label>Image Smoothing</label>
                 <input type="checkbox" v-model="imageSmoothing">
             </div>
+            <button @click="toggleFullscreen">Toggle Fullscreen</button>
         </div>
     </div>
 </template>

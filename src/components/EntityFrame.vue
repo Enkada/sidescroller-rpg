@@ -38,9 +38,12 @@ const formatDescription = (effect: { id: string, duration: number, caster: Comba
 			<div class="entity-frame__bar-list">
 				<div class="entity-frame__health entity-frame__bar">
 					<div :style="{ width: healthPercentage + '%' }" class="entity-frame__bar__inner"></div>
-					<div class="entity-frame__bar__value">{{ Math.max(0, props.entity.health) }} / {{
-						props.entity.maxHealth
-						}}</div>
+					<div class="entity-frame__bar__value">{{ Math.max(0, props.entity.health) }} / {{ props.entity.maxHealth }}</div>
+					<div class="entity-frame__armor" v-if="props.entity.armor > 0">
+						<div class="entity-frame__armor__icon">⛊</div>
+						<div class="entity-frame__armor__value">{{ props.entity.armor }}</div>
+						<div class="entity-frame__armor__trail"></div>
+					</div>
 				</div>
 				<div class="entity-frame__mana entity-frame__bar">
 					<div :style="{ width: manaPercentage + '%' }" class="entity-frame__bar__inner"></div>
@@ -158,6 +161,54 @@ const formatDescription = (effect: { id: string, duration: number, caster: Comba
 		}
 	}
 
+	&__armor {
+		position: absolute;
+		right: 0;
+		top: 0;
+		z-index: 1;
+		display: grid;
+		align-items: center;
+		justify-items: center;
+		width: 32px;
+		height: 32px;
+		translate: calc(50% + 3px) -2px;
+
+		&__trail {
+			background-image: linear-gradient(to left, hsl(0, 0%, 50%) 20%, transparent 100%);
+			height: 100%;
+			width: 96px;
+			translate: -50% 2px;
+			z-index: -1;
+			opacity: .8;
+		}
+
+		&__value {
+			color: white;
+			font-size: 20px;
+			--clr-shadow: hsl(0, 0%, 30%);
+			text-shadow:
+				-1px -1px 1px var(--clr-shadow),
+				1px -1px 1px var(--clr-shadow),
+				-1px 1px 1px var(--clr-shadow),
+				1px 1px 1px var(--clr-shadow);
+		}
+
+		&__icon {
+			font-size: 48px;
+			color: hsl(0, 0%, 50%);		
+			--clr-shadow: hsl(0, 0%, 30%);
+			text-shadow: 
+				1px 1px 0px var(--clr-shadow),
+				-1px -1px 0px var(--clr-shadow),
+				1px -1px 0px var(--clr-shadow),
+				-1px 1px 0px var(--clr-shadow);	
+		}
+
+		& > * {
+			position: absolute;
+		}
+	}
+
 	&__portrait {
 		--size: 128px;
 		--sprite-width: 512px;
@@ -209,9 +260,15 @@ const formatDescription = (effect: { id: string, duration: number, caster: Comba
 		box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5);
 		position: relative;
 
+
 		&__inner {
 			height: 100%;
+		    background-image: url("/ui/bar.png");
 			background-color: var(--clr-foreground);
+			background-blend-mode: multiply;
+			background-size: 512px;
+			animation: flowBackground 30s linear infinite;
+
 			border-radius: 4px;
 			box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5);
 			transition: width 0.5s ease;
@@ -235,6 +292,19 @@ const formatDescription = (effect: { id: string, duration: number, caster: Comba
 	&__mana {
 		--clr-background: var(--clr-mana-bg);
 		--clr-foreground: var(--clr-mana);
+		
+		.entity-frame__bar__inner {
+			background-position-y: 256px;
+		}
+	}
+}
+
+@keyframes flowBackground {
+	0% {
+		background-position-x: 0px;
+	}
+	100% {
+		background-position-x: 512px;
 	}
 }
 </style>

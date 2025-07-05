@@ -40,7 +40,7 @@ const quest = QUESTS.find(q => q.id === props.questId);
     width: calc(4 * (64px + .5em) + 2em);
     padding: 1em;
     border: 8px solid var(--clr-ui-border);
-    background-image: url("ui_bg.jpg");
+    background-image: url("/ui/bg.jpg");
     display: grid;
     gap: .5em;
 

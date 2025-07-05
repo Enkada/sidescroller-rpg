@@ -1,20 +1,4 @@
-export const getFPS = () =>
-    new Promise<number>(resolve => {
-        requestAnimationFrame(t1 => {
-            requestAnimationFrame(t2 => {
-                const fps = Math.round(1000 / (t2 - t1));
-                resolve(fps);
-            });
-        });
-    });
-
-export let FRAMES_PER_SECOND = 0;
-export let PLAYER_SPEED = 0;
-
-getFPS().then(fps => {
-    FRAMES_PER_SECOND = fps;
-    PLAYER_SPEED = 14 * 60 / FRAMES_PER_SECOND;
-});
+export const PLAYER_SPEED = (fps: number) => 14 * 60 / fps;
 
 export const SCREEN_WIDTH = 1280;
 export const SCREEN_HEIGHT = 720;
